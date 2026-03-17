@@ -38,4 +38,5 @@ Architecture tests:
 
 ## Test design decisions
 
-If multiple testing approaches are possible (for example: unit test vs integration test, mock vs fake implementation), explain the alternatives and ask before generating code.
+If multiple testing approaches are possible (for example: unit test vs integration test, mock vs fake implementation), 
+explain the alternatives and ask before generating code.

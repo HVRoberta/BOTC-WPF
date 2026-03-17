@@ -21,6 +21,8 @@ Architecture rules:
 - Avoid generic utility classes.
 - Prefer deterministic logic that is easy to unit test.
 - Do not add serialization, persistence, or UI attributes here unless explicitly required.
+- Avoid public setters on domain entities unless strictly necessary.
+- Prefer factory methods or explicit constructors when invariants must be protected.
 
 DDD rules:
 

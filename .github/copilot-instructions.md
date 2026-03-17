@@ -104,6 +104,89 @@ Avoid using weak or untyped constructs.
 
 If a type is unclear or multiple options exist, ask for clarification instead of using a generic or weakly typed solution.
 
+## Dependency introduction policy
+
+Do not introduce new NuGet packages, frameworks, or external libraries without asking first.
+
+Instead:
+
+1. Explain why a new dependency might help.
+2. List the alternatives using the current stack.
+3. Ask for confirmation before adding the dependency.
+
+## Class design rules
+
+Avoid god classes and vague abstractions.
+
+- Do not create classes named Manager, Helper, Utility, or Service unless the responsibility is explicit and justified.
+- Prefer small, focused classes with one clear purpose.
+- Use explicit names that reflect the business or technical responsibility.
+
+## State management rules
+
+Avoid static mutable state.
+
+- Do not store application or domain state in static fields.
+- Prefer explicit state ownership through domain models, application services, or scoped dependencies.
+- If shared state is needed, explain the options and ask before implementing it.
+
+## State management rules
+
+Avoid static mutable state.
+
+- Do not store application or domain state in static fields.
+- Prefer explicit state ownership through domain models, application services, or scoped dependencies.
+- If shared state is needed, explain the options and ask before implementing it.
+
+## Explicit constants and types
+
+Avoid magic strings and magic numbers.
+
+- Prefer explicit constants, enums, or value objects.
+- Do not hardcode protocol values, statuses, or domain concepts directly in methods.
+- Use named types for important concepts.
+
+## Refactoring rules
+
+When refactoring existing code:
+
+- preserve architectural boundaries
+- do not silently move business logic across layers
+- explain structural changes before applying them
+- prefer incremental refactoring over large rewrites unless explicitly requested
+
+## Simplicity rule
+
+Prefer the simplest solution that fits the current stage of the project.
+
+- Do not introduce advanced patterns prematurely.
+- Avoid over-engineering.
+- Prefer straightforward implementations before adding abstractions.
+- If a more complex design is proposed, explain why it is needed and ask first.
+
+## Async rules
+
+Use async APIs where appropriate, especially for I/O operations.
+
+- Do not fake async with unnecessary Task.Run.
+- Do not block on async code with .Result or .Wait().
+- Keep async flows explicit and readable.
+
+## Mapping rules
+
+Keep mapping responsibilities explicit.
+
+- Do not return Domain entities directly from API contracts.
+- Do not mix persistence models, transport models, and domain models.
+- Keep conversions clear and localized.
+
+## Comment rules
+
+Do not add redundant comments that restate the code.
+
+- Prefer self-explanatory naming.
+- Add comments only when explaining intent, trade-offs, or non-obvious decisions.
+
 ## Interaction style
 
 Prefer asking clarification questions instead of guessing developer intent.

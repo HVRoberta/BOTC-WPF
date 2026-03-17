@@ -1,0 +1,27 @@
+﻿<Window x:Class="BOTC.Presentation.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:createRoom="clr-namespace:BOTC.Presentation.Desktop.Rooms.CreateRoom"
+        xmlns:roomLobby="clr-namespace:BOTC.Presentation.Desktop.Rooms.RoomLobby"
+        mc:Ignorable="d"
+        Title="Blood on the Clocktower"
+        Width="520"
+        Height="360"
+        MinWidth="420"
+        MinHeight="280">
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type createRoom:CreateRoomViewModel}">
+            <createRoom:CreateRoomView />
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type roomLobby:RoomLobbyViewModel}">
+            <roomLobby:RoomLobbyView />
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <ContentControl Content="{Binding CurrentViewModel}" />
+    </Grid>
+</Window>
