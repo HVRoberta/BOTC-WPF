@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BOTC.Application/BOTC.Application.csproj" />
+    <Project Path="src/BOTC.Contracts/BOTC.Contracts.csproj" />
+    <Project Path="src/BOTC.Domain/BOTC.Domain.csproj" />
+    <Project Path="src/BOTC.Infrastructure/BOTC.Infrastructure.csproj" />
+    <Project Path="src/BOTC.Presentation.Api/BOTC.Presentation.Api.csproj" />
+    <Project Path="src/BOTC.Presentation.Desktop/BOTC.Presentation.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BOTC.Application.Tests/BOTC.Application.Tests.csproj" />
+    <Project Path="tests/BOTC.Architecture.Tests/BOTC.Architecture.Tests.csproj" />
+    <Project Path="tests/BOTC.Domain.Tests/BOTC.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
