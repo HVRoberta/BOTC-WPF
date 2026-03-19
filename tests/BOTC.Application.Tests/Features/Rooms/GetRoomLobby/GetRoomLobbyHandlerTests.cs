@@ -6,21 +6,21 @@ namespace BOTC.Application.Tests.Features.Rooms.GetRoomLobby;
 public sealed class GetRoomLobbyHandlerTests
 {
     [Fact]
-    public void Constructor_WhenReadRepositoryIsNull_ThrowsArgumentNullException()
+    public void Constructor_WhenQueryServiceIsNull_ThrowsArgumentNullException()
     {
         // Act
         Action act = () => _ = new GetRoomLobbyHandler(null!);
 
         // Assert
         var exception = Assert.Throws<ArgumentNullException>(act);
-        Assert.Equal("roomLobbyReadRepository", exception.ParamName);
+        Assert.Equal("roomLobbyQueryService", exception.ParamName);
     }
 
     [Fact]
     public async Task HandleAsync_WhenQueryIsNull_ThrowsArgumentNullException()
     {
         // Arrange
-        var handler = new GetRoomLobbyHandler(new FakeRoomLobbyReadRepository());
+        var handler = new GetRoomLobbyHandler(new FakeRoomLobbyQueryService());
 
         // Act
         var act = async () => await handler.HandleAsync(null!, CancellationToken.None);
@@ -34,7 +34,7 @@ public sealed class GetRoomLobbyHandlerTests
     public async Task HandleAsync_WhenRoomCodeIsInvalid_ThrowsArgumentExceptionBeforeRepositoryCall()
     {
         // Arrange
-        var repository = new FakeRoomLobbyReadRepository();
+        var repository = new FakeRoomLobbyQueryService();
         var handler = new GetRoomLobbyHandler(repository);
 
         // Act
@@ -49,7 +49,7 @@ public sealed class GetRoomLobbyHandlerTests
     public async Task HandleAsync_WhenRoomDoesNotExist_ThrowsRoomLobbyNotFoundException()
     {
         // Arrange
-        var repository = new FakeRoomLobbyReadRepository();
+        var repository = new FakeRoomLobbyQueryService();
         var handler = new GetRoomLobbyHandler(repository);
 
         // Act
@@ -65,7 +65,7 @@ public sealed class GetRoomLobbyHandlerTests
     public async Task HandleAsync_WhenRoomExists_ReturnsLobbyState()
     {
         // Arrange
-        var repository = new FakeRoomLobbyReadRepository();
+        var repository = new FakeRoomLobbyQueryService();
         repository.SeedLobby(new GetRoomLobbyResult(
             new RoomCode("AB12CD"),
             "Host",
@@ -87,7 +87,7 @@ public sealed class GetRoomLobbyHandlerTests
     public async Task HandleAsync_WhenCancellationIsRequested_ThrowsOperationCanceledException()
     {
         // Arrange
-        var repository = new FakeRoomLobbyReadRepository();
+        var repository = new FakeRoomLobbyQueryService();
         repository.SeedLobby(new GetRoomLobbyResult(
             new RoomCode("AB12CD"),
             "Host",
@@ -105,7 +105,7 @@ public sealed class GetRoomLobbyHandlerTests
         await Assert.ThrowsAsync<OperationCanceledException>(act);
     }
 
-    private sealed class FakeRoomLobbyReadRepository : IRoomLobbyReadRepository
+    private sealed class FakeRoomLobbyQueryService : IRoomLobbyQueryService
     {
         private readonly Dictionary<string, GetRoomLobbyResult> lobbiesByCode = new(StringComparer.Ordinal);
 

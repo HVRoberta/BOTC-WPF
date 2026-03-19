@@ -2,7 +2,7 @@
 
 namespace BOTC.Application.Features.Rooms.GetRoomLobby;
 
-public interface IRoomLobbyReadRepository
+public interface IRoomLobbyQueryService
 {
     Task<GetRoomLobbyResult?> GetByRoomCodeAsync(RoomCode roomCode, CancellationToken cancellationToken);
 }

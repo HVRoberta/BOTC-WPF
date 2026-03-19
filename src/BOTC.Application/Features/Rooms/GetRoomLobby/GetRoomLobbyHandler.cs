@@ -4,12 +4,12 @@ namespace BOTC.Application.Features.Rooms.GetRoomLobby;
 
 public sealed class GetRoomLobbyHandler
 {
-    private readonly IRoomLobbyReadRepository roomLobbyReadRepository;
+    private readonly IRoomLobbyQueryService _roomLobbyQueryService;
 
-    public GetRoomLobbyHandler(IRoomLobbyReadRepository roomLobbyReadRepository)
+    public GetRoomLobbyHandler(IRoomLobbyQueryService roomLobbyQueryService)
     {
-        this.roomLobbyReadRepository = roomLobbyReadRepository
-            ?? throw new ArgumentNullException(nameof(roomLobbyReadRepository));
+        _roomLobbyQueryService = roomLobbyQueryService
+            ?? throw new ArgumentNullException(nameof(roomLobbyQueryService));
     }
 
     public async Task<GetRoomLobbyResult> HandleAsync(GetRoomLobbyQuery query, CancellationToken cancellationToken)
@@ -17,7 +17,7 @@ public sealed class GetRoomLobbyHandler
         ArgumentNullException.ThrowIfNull(query);
 
         var roomCode = new RoomCode(query.RoomCode);
-        var result = await roomLobbyReadRepository.GetByRoomCodeAsync(roomCode, cancellationToken);
+        var result = await _roomLobbyQueryService.GetByRoomCodeAsync(roomCode, cancellationToken);
 
         if (result is null)
         {

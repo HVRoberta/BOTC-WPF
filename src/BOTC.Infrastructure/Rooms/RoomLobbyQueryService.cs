@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BOTC.Infrastructure.Rooms;
 
-public sealed class RoomLobbyReadRepository : IRoomLobbyReadRepository
+public sealed class RoomLobbyQueryService : IRoomLobbyQueryService
 {
     private readonly BotcDbContext dbContext;
 
-    public RoomLobbyReadRepository(BotcDbContext dbContext)
+    public RoomLobbyQueryService(BotcDbContext dbContext)
     {
         this.dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
     }

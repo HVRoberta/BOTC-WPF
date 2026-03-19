@@ -18,7 +18,7 @@ public static class InfrastructureServiceRegistration
             options.UseSqlite(connectionString));
 
         services.AddScoped<IRoomRepository, RoomRepository>();
-        services.AddScoped<IRoomLobbyReadRepository, RoomLobbyReadRepository>();
+        services.AddScoped<IRoomLobbyQueryService, RoomLobbyQueryService>();
         services.AddSingleton<IRoomCodeGenerator, RandomRoomCodeGenerator>();
 
         return services;
