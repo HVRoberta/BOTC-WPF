@@ -117,10 +117,59 @@ public sealed class RoomRepositoryTests : IDisposable
         await Assert.ThrowsAnyAsync<OperationCanceledException>(act);
     }
 
+    [Fact]
+    public async Task TryAddAsync_WhenRoomIdAlreadyExists_RethrowsDbUpdateException()
+    {
+        // Arrange
+        var sharedId = RoomId.New();
+        var firstRoom = CreateRoom(sharedId, "AB12CD", "First Host");
+        var duplicateIdRoom = CreateRoom(sharedId, "EF34GH", "Second Host");
+
+        await repository.TryAddAsync(firstRoom, CancellationToken.None);
+        dbContext.ChangeTracker.Clear();
+
+        // Act
+        var act = async () => await repository.TryAddAsync(duplicateIdRoom, CancellationToken.None);
+
+        // Assert
+        await Assert.ThrowsAsync<DbUpdateException>(act);
+    }
+
+    [Fact]
+    public async Task TryAddAsync_WhenNonUniqueConstraintViolationOccurs_RethrowsDbUpdateException()
+    {
+        // Arrange
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TRIGGER Rooms_PreventInsert
+            BEFORE INSERT ON Rooms
+            BEGIN
+                SELECT RAISE(ABORT, 'blocked by test trigger');
+            END;
+            """);
+
+        var room = CreateRoom("AB12CD", "Host");
+
+        // Act
+        var act = async () => await repository.TryAddAsync(room, CancellationToken.None);
+
+        // Assert
+        await Assert.ThrowsAsync<DbUpdateException>(act);
+    }
+
     private static Room CreateRoom(string code, string hostDisplayName)
     {
         return Room.Create(
             RoomId.New(),
+            new RoomCode(code),
+            hostDisplayName,
+            DateTime.UtcNow);
+    }
+
+    private static Room CreateRoom(RoomId id, string code, string hostDisplayName)
+    {
+        return Room.Create(
+            id,
             new RoomCode(code),
             hostDisplayName,
             DateTime.UtcNow);
@@ -132,4 +181,3 @@ public sealed class RoomRepositoryTests : IDisposable
         connection.Dispose();
     }
 }
-
