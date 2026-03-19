@@ -1,4 +1,5 @@
 ﻿using BOTC.Application.Features.Rooms.CreateRoom;
+using BOTC.Application.Features.Rooms.GetRoomLobby;
 using BOTC.Contracts.Rooms;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,6 +15,13 @@ public static class RoomsEndpoints
             .Produces<CreateRoomResponse>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+
+        endpoints.MapGet("/api/rooms/{roomCode}/lobby", GetRoomLobbyAsync)
+            .WithName("GetRoomLobby")
+            .WithTags("Rooms")
+            .Produces<GetRoomLobbyResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         return endpoints;
     }
@@ -58,5 +66,37 @@ public static class RoomsEndpoints
             });
         }
     }
-}
 
+    private static async Task<IResult> GetRoomLobbyAsync(
+        string roomCode,
+        GetRoomLobbyHandler handler,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var query = RoomLobbyMappings.ToQuery(roomCode);
+            var result = await handler.HandleAsync(query, cancellationToken);
+            var response = RoomLobbyMappings.ToResponse(result);
+
+            return Results.Ok(response);
+        }
+        catch (RoomLobbyNotFoundException exception)
+        {
+            return Results.NotFound(new ProblemDetails
+            {
+                Title = "Room not found.",
+                Detail = exception.Message,
+                Status = StatusCodes.Status404NotFound
+            });
+        }
+        catch (ArgumentException exception)
+        {
+            return Results.BadRequest(new ProblemDetails
+            {
+                Title = "Invalid room code.",
+                Detail = exception.Message,
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+    }
+}

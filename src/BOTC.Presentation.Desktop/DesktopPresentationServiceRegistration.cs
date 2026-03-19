@@ -1,4 +1,4 @@
-﻿using BOTC.Presentation.Desktop.Navigation;
+﻿﻿using BOTC.Presentation.Desktop.Navigation;
 using BOTC.Presentation.Desktop.Rooms;
 using BOTC.Presentation.Desktop.Rooms.CreateRoom;
 using BOTC.Presentation.Desktop.Rooms.RoomLobby;
@@ -10,7 +10,7 @@ namespace BOTC.Presentation.Desktop;
 public static class DesktopPresentationServiceRegistration
 {
     private const string ApiBaseAddressConfigurationPath = "Api:BaseAddress";
-    private static readonly Uri DefaultRoomsApiBaseAddress = new("https://localhost:5001");
+    private static readonly Uri DefaultRoomsApiBaseAddress = new("http://localhost:5000");
 
     public static IServiceCollection AddDesktopPresentation(this IServiceCollection services)
     {

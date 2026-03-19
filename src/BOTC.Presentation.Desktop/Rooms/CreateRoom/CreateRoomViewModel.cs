@@ -1,7 +1,6 @@
 ﻿using System.Net.Http;
 using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Desktop.Navigation;
-using BOTC.Presentation.Desktop.Rooms;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -40,7 +39,7 @@ public partial class CreateRoomViewModel(
         {
             var request = new CreateRoomRequest(HostDisplayName.Trim());
             var response = await roomsApiClient.CreateRoomAsync(request, CancellationToken.None);
-            navigationService.NavigateToRoomLobby(response);
+            await navigationService.NavigateToRoomLobbyAsync(response.RoomCode, CancellationToken.None);
         }
         catch (HttpRequestException)
         {

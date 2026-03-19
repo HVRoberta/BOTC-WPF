@@ -1,5 +1,4 @@
-﻿using BOTC.Contracts.Rooms;
-using BOTC.Presentation.Desktop.Rooms.CreateRoom;
+﻿using BOTC.Presentation.Desktop.Rooms.CreateRoom;
 using BOTC.Presentation.Desktop.Rooms.RoomLobby;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,11 +13,10 @@ public sealed class NavigationService(
         mainWindowViewModel.CurrentViewModel = serviceProvider.GetRequiredService<CreateRoomViewModel>();
     }
 
-    public void NavigateToRoomLobby(CreateRoomResponse response)
+    public async Task NavigateToRoomLobbyAsync(string roomCode, CancellationToken cancellationToken)
     {
         var roomLobbyViewModel = serviceProvider.GetRequiredService<RoomLobbyViewModel>();
-        roomLobbyViewModel.LoadRoom(response);
         mainWindowViewModel.CurrentViewModel = roomLobbyViewModel;
+        await roomLobbyViewModel.LoadAsync(roomCode, cancellationToken);
     }
 }
-
