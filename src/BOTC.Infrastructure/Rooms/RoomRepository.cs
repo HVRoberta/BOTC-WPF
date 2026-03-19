@@ -9,6 +9,9 @@ namespace BOTC.Infrastructure.Rooms;
 
 public sealed class RoomRepository : IRoomRepository
 {
+    private const int SqliteConstraintErrorCode = 19;
+    private const int SqliteConstraintUniqueExtendedErrorCode = 2067;
+
     private readonly BotcDbContext dbContext;
 
     public RoomRepository(BotcDbContext dbContext)
@@ -30,7 +33,6 @@ public sealed class RoomRepository : IRoomRepository
         }
         catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
         {
-            // Room code already exists; caller should retry with a different code.
             dbContext.Entry(entity).State = EntityState.Detached;
             return false;
         }
@@ -51,7 +53,7 @@ public sealed class RoomRepository : IRoomRepository
     private static bool IsUniqueConstraintViolation(DbUpdateException exception)
     {
         return exception.InnerException is SqliteException sqliteException
-               && sqliteException.SqliteErrorCode == 19;
+               && sqliteException.SqliteErrorCode == SqliteConstraintErrorCode
+               && sqliteException.SqliteExtendedErrorCode == SqliteConstraintUniqueExtendedErrorCode;
     }
 }
-
