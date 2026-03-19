@@ -9,6 +9,9 @@ namespace BOTC.Infrastructure.Rooms;
 
 public sealed class RoomRepository : IRoomRepository
 {
+    private const int SqliteConstraintUnique = 2067;
+    private const int SqliteConstraintPrimaryKey = 1555;
+
     private readonly BotcDbContext dbContext;
 
     public RoomRepository(BotcDbContext dbContext)
@@ -51,7 +54,7 @@ public sealed class RoomRepository : IRoomRepository
     private static bool IsUniqueConstraintViolation(DbUpdateException exception)
     {
         return exception.InnerException is SqliteException sqliteException
-               && sqliteException.SqliteErrorCode == 19;
+               && sqliteException.SqliteExtendedErrorCode is SqliteConstraintUnique or SqliteConstraintPrimaryKey;
     }
 }
 
