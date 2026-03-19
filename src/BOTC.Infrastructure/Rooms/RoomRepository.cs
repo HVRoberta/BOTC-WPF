@@ -49,7 +49,7 @@ public sealed class RoomRepository : IRoomRepository
             CreatedAtUtc = room.CreatedAtUtc
         };
     }
-
+    
     private static bool IsUniqueConstraintViolation(DbUpdateException exception)
     {
         return exception.InnerException is SqliteException sqliteException
