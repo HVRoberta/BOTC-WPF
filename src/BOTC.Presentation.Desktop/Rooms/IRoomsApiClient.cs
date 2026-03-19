@@ -5,5 +5,6 @@ namespace BOTC.Presentation.Desktop.Rooms;
 public interface IRoomsApiClient
 {
     Task<CreateRoomResponse> CreateRoomAsync(CreateRoomRequest request, CancellationToken cancellationToken);
-}
 
+    Task<GetRoomLobbyResponse> GetRoomLobbyAsync(string roomCode, CancellationToken cancellationToken);
+}

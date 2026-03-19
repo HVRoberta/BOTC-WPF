@@ -4,27 +4,54 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
-             d:DesignHeight="300"
+             d:DesignHeight="320"
              d:DesignWidth="420">
-    <StackPanel>
-        <TextBlock FontSize="22" FontWeight="SemiBold" Text="Room Lobby" />
-        <TextBlock Margin="0,12,0,0" Text="This is a placeholder lobby target." />
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </UserControl.Resources>
 
-        <TextBlock Margin="0,16,0,0" Text="Room ID" FontWeight="SemiBold" />
-        <TextBlock Text="{Binding RoomId}" />
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="12" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="8" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="8" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="12" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="8" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-        <TextBlock Margin="0,12,0,0" Text="Room Code" FontWeight="SemiBold" />
-        <TextBlock Text="{Binding RoomCode}" />
+        <TextBlock Grid.Row="0" FontSize="22" FontWeight="SemiBold" Text="Room Lobby" />
 
-        <TextBlock Margin="0,12,0,0" Text="Created (UTC)" FontWeight="SemiBold" />
-        <TextBlock Text="{Binding CreatedAtUtc}" />
+        <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Room code" />
+        <TextBlock Grid.Row="2" Margin="0,22,0,0" Text="{Binding RoomCode}" />
 
-        <Button Margin="0,20,0,0"
-                Width="170"
+        <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="Host" />
+        <TextBlock Grid.Row="4" Margin="0,22,0,0" Text="{Binding HostDisplayName}" />
+
+        <TextBlock Grid.Row="6" FontWeight="SemiBold" Text="Status" />
+        <TextBlock Grid.Row="6" Margin="0,22,0,0" Text="{Binding RoomStatus}" />
+
+        <TextBlock Grid.Row="8"
+                   Foreground="IndianRed"
+                   Text="{Binding ErrorMessage}" />
+
+        <Button Grid.Row="10"
                 Height="34"
+                Width="170"
                 HorizontalAlignment="Left"
                 Command="{Binding BackToCreateRoomCommand}"
                 Content="Create another room" />
-    </StackPanel>
-</UserControl>
 
+        <ProgressBar Grid.Row="12"
+                     Height="8"
+                     IsIndeterminate="True"
+                     Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+    </Grid>
+</UserControl>

@@ -1,5 +1,6 @@
 using BOTC.Application.Abstractions.Persistence;
 using BOTC.Application.Abstractions.Services;
+using BOTC.Application.Features.Rooms.GetRoomLobby;
 using BOTC.Infrastructure.Persistence;
 using BOTC.Infrastructure.Rooms;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,7 @@ public static class InfrastructureServiceRegistration
             options.UseSqlite(connectionString));
 
         services.AddScoped<IRoomRepository, RoomRepository>();
+        services.AddScoped<IRoomLobbyQueryService, RoomLobbyQueryService>();
         services.AddSingleton<IRoomCodeGenerator, RandomRoomCodeGenerator>();
 
         return services;
