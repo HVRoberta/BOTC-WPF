@@ -1,0 +1,193 @@
+﻿using System.Net;
+using BOTC.Contracts.Rooms;
+using BOTC.Presentation.Desktop.Navigation;
+using BOTC.Presentation.Desktop.Rooms;
+using BOTC.Presentation.Desktop.Rooms.RoomLobby;
+
+namespace BOTC.Presentation.Desktop.Tests.Rooms.RoomLobby;
+
+public sealed class RoomLobbyViewModelTests
+{
+    [Fact]
+    public async Task LobbyUpdated_WhenLobbyIsActive_ReloadsLobbyStateFromHttp()
+    {
+        var apiClient = new FakeRoomsApiClient([
+            Task.FromResult(CreateLobbyResponse("AB12CD", ["Host"])),
+            Task.FromResult(CreateLobbyResponse("AB12CD", ["Host", "Alice"]))
+        ]);
+        var realtimeClient = new FakeRoomLobbyRealtimeClient();
+        var viewModel = CreateViewModel(apiClient, realtimeClient);
+
+        await viewModel.LoadAsync("AB12CD", CancellationToken.None);
+        await viewModel.ActivateAsync(CancellationToken.None);
+        await realtimeClient.RaiseLobbyUpdatedAsync("AB12CD");
+
+        Assert.Equal(2, apiClient.GetRoomLobbyCallCount);
+        Assert.Equal(2, viewModel.Players.Count);
+        Assert.Equal("Alice", viewModel.Players[1].DisplayName);
+        Assert.Equal("AB12CD", realtimeClient.SubscribedRoomCodes.Single());
+    }
+
+    [Fact]
+    public async Task LobbyUpdated_BurstWhileRefreshIsInFlight_CoalescesToSingleTrailingReload()
+    {
+        var refreshStarted = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var allowRefreshToComplete = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var apiClient = new FakeRoomsApiClient([
+            Task.FromResult(CreateLobbyResponse("AB12CD", ["Host"])),
+            WaitForRefreshAsync(refreshStarted, allowRefreshToComplete, CreateLobbyResponse("AB12CD", ["Host", "Alice"])),
+            Task.FromResult(CreateLobbyResponse("AB12CD", ["Host", "Alice", "Bob"]))
+        ]);
+        var realtimeClient = new FakeRoomLobbyRealtimeClient();
+        var viewModel = CreateViewModel(apiClient, realtimeClient);
+
+        await viewModel.LoadAsync("AB12CD", CancellationToken.None);
+        await viewModel.ActivateAsync(CancellationToken.None);
+
+        var firstUpdateTask = realtimeClient.RaiseLobbyUpdatedAsync("AB12CD");
+        await refreshStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var secondUpdateTask = realtimeClient.RaiseLobbyUpdatedAsync("AB12CD");
+        var thirdUpdateTask = realtimeClient.RaiseLobbyUpdatedAsync("AB12CD");
+
+        allowRefreshToComplete.TrySetResult(null);
+
+        await Task.WhenAll(firstUpdateTask, secondUpdateTask, thirdUpdateTask).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(3, apiClient.GetRoomLobbyCallCount);
+        Assert.Equal(3, viewModel.Players.Count);
+        Assert.Equal("Bob", viewModel.Players[^1].DisplayName);
+    }
+
+    [Fact]
+    public async Task LobbyUpdated_WhenReloadFails_PreservesLastSuccessfulLobbyState()
+    {
+        var apiClient = new FakeRoomsApiClient([
+            Task.FromResult(CreateLobbyResponse("AB12CD", ["Host"])),
+            Task.FromException<GetRoomLobbyResponse>(new HttpRequestException("Missing room.", null, HttpStatusCode.NotFound))
+        ]);
+        var realtimeClient = new FakeRoomLobbyRealtimeClient();
+        var viewModel = CreateViewModel(apiClient, realtimeClient);
+
+        await viewModel.LoadAsync("AB12CD", CancellationToken.None);
+        await viewModel.ActivateAsync(CancellationToken.None);
+        await realtimeClient.RaiseLobbyUpdatedAsync("AB12CD");
+
+        Assert.Single(viewModel.Players);
+        Assert.Equal("Host", viewModel.Players[0].DisplayName);
+        Assert.Equal("Room was not found. Showing the last loaded data.", viewModel.ErrorMessage);
+    }
+
+    private static RoomLobbyViewModel CreateViewModel(
+        FakeRoomsApiClient apiClient,
+        FakeRoomLobbyRealtimeClient realtimeClient)
+    {
+        return new RoomLobbyViewModel(apiClient, realtimeClient, new FakeNavigationService());
+    }
+
+    private static GetRoomLobbyResponse CreateLobbyResponse(string roomCode, IReadOnlyList<string> players)
+    {
+        return new GetRoomLobbyResponse(
+            roomCode,
+            players.Select((playerName, index) => new LobbyPlayerResponse(index.ToString(), playerName, index == 0)).ToArray(),
+            RoomStatusContract.WaitingForPlayers);
+    }
+
+    private static async Task<GetRoomLobbyResponse> WaitForRefreshAsync(
+        TaskCompletionSource<object?> refreshStarted,
+        TaskCompletionSource<object?> allowRefreshToComplete,
+        GetRoomLobbyResponse response)
+    {
+        refreshStarted.TrySetResult(null);
+        await allowRefreshToComplete.Task;
+        return response;
+    }
+
+    private sealed class FakeRoomsApiClient(IEnumerable<Task<GetRoomLobbyResponse>> lobbyResponses) : IRoomsApiClient
+    {
+        private readonly Queue<Task<GetRoomLobbyResponse>> _lobbyResponses = new(lobbyResponses);
+
+        public int GetRoomLobbyCallCount { get; private set; }
+
+        public Task<CreateRoomResponse> CreateRoomAsync(CreateRoomRequest request, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<JoinRoomResponse> JoinRoomAsync(string roomCode, JoinRoomRequest request, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<GetRoomLobbyResponse> GetRoomLobbyAsync(string roomCode, CancellationToken cancellationToken)
+        {
+            GetRoomLobbyCallCount++;
+            if (_lobbyResponses.Count == 0)
+            {
+                throw new InvalidOperationException("No more lobby responses configured for test.");
+            }
+
+            return _lobbyResponses.Dequeue();
+        }
+    }
+
+    private sealed class FakeRoomLobbyRealtimeClient : IRoomLobbyRealtimeClient
+    {
+        public event Func<string, Task>? LobbyUpdated;
+
+        public List<string> SubscribedRoomCodes { get; } = [];
+        public List<string> UnsubscribedRoomCodes { get; } = [];
+
+        public Task SubscribeAsync(string roomCode, CancellationToken cancellationToken)
+        {
+            SubscribedRoomCodes.Add(roomCode);
+            return Task.CompletedTask;
+        }
+
+        public Task UnsubscribeAsync(string roomCode, CancellationToken cancellationToken)
+        {
+            if (!string.IsNullOrWhiteSpace(roomCode))
+            {
+                UnsubscribedRoomCodes.Add(roomCode);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public async Task RaiseLobbyUpdatedAsync(string roomCode)
+        {
+            var handler = LobbyUpdated;
+            if (handler is null)
+            {
+                return;
+            }
+
+            foreach (var callback in handler.GetInvocationList().Cast<Func<string, Task>>())
+            {
+                await callback(roomCode);
+            }
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class FakeNavigationService : INavigationService
+    {
+        public void NavigateToCreateRoom()
+        {
+        }
+
+        public void NavigateToJoinRoom()
+        {
+        }
+
+        public Task NavigateToRoomLobbyAsync(string roomCode, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+    }
+}
+
