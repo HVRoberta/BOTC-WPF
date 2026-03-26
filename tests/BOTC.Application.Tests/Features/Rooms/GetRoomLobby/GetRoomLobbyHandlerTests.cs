@@ -1,4 +1,4 @@
-﻿using BOTC.Application.Features.Rooms.GetRoomLobby;
+﻿﻿using BOTC.Application.Features.Rooms.GetRoomLobby;
 using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Tests.Features.Rooms.GetRoomLobby;
@@ -83,7 +83,10 @@ public sealed class GetRoomLobbyHandlerTests
         Assert.Equal("AB12CD", result.RoomCode.Value);
         Assert.Equal(RoomStatus.WaitingForPlayers, result.Status);
         Assert.Equal(2, result.Players.Count);
-        Assert.Contains(result.Players, player => player.Role == RoomPlayerRole.Host && player.DisplayName == "Host");
+        Assert.Equal("Host", result.Players[0].DisplayName);
+        Assert.Equal(RoomPlayerRole.Host, result.Players[0].Role);
+        Assert.Equal("Alice", result.Players[1].DisplayName);
+        Assert.Equal(RoomPlayerRole.Player, result.Players[1].Role);
         Assert.Equal(1, repository.GetByRoomCodeCallCount);
     }
 

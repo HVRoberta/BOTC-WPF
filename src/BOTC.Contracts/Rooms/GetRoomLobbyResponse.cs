@@ -2,5 +2,5 @@
 
 public sealed record GetRoomLobbyResponse(
     string RoomCode,
-    IReadOnlyCollection<LobbyPlayerResponse> Players,
+    IReadOnlyList<LobbyPlayerResponse> Players,
     RoomStatusContract Status);

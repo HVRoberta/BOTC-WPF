@@ -1,4 +1,4 @@
-﻿﻿using System.Reflection;
+﻿using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using BOTC.Application.Features.Rooms.GetRoomLobby;
@@ -43,6 +43,8 @@ public sealed class GetRoomLobbyEndpointTests
         Assert.Equal(2, players.Length);
         Assert.Equal("Host", players[0].GetProperty("displayName").GetString());
         Assert.True(players[0].GetProperty("isHost").GetBoolean());
+        Assert.Equal("Alice", players[1].GetProperty("displayName").GetString());
+        Assert.False(players[1].GetProperty("isHost").GetBoolean());
     }
 
     [Fact]

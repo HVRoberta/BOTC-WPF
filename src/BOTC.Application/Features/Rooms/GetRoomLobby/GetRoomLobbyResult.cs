@@ -9,5 +9,5 @@ public sealed record LobbyPlayerResult(
 
 public sealed record GetRoomLobbyResult(
     RoomCode RoomCode,
-    IReadOnlyCollection<LobbyPlayerResult> Players,
+    IReadOnlyList<LobbyPlayerResult> Players,
     RoomStatus Status);

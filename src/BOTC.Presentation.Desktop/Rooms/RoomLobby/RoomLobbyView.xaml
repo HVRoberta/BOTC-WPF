@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:roomLobby="clr-namespace:BOTC.Presentation.Desktop.Rooms.RoomLobby"
              mc:Ignorable="d"
              d:DesignHeight="360"
              d:DesignWidth="420">
@@ -15,59 +16,113 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="12" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="8" />
+            <RowDefinition Height="12" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="8" />
+            <RowDefinition Height="12" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="8" />
             <RowDefinition Height="*" />
             <RowDefinition Height="12" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="8" />
+            <RowDefinition Height="12" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" FontSize="22" FontWeight="SemiBold" Text="Room Lobby" />
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-        <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Room code" />
-        <TextBlock Grid.Row="2" Margin="0,22,0,0" Text="{Binding RoomCode}" />
+            <TextBlock Grid.Column="0"
+                       FontSize="22"
+                       FontWeight="SemiBold"
+                       Text="Room Lobby" />
 
-        <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="Status" />
-        <TextBlock Grid.Row="4" Margin="0,22,0,0" Text="{Binding RoomStatus}" />
+            <Button Grid.Column="1"
+                    Height="34"
+                    Padding="20,0"
+                    Command="{Binding RefreshCommand}"
+                    Content="Refresh" />
+        </Grid>
 
-        <TextBlock Grid.Row="6" FontWeight="SemiBold" Text="Participants" />
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <TextBlock FontWeight="SemiBold" Text="Room code" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding RoomCode}" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                <TextBlock FontWeight="SemiBold" Text="Status" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding RoomStatus}" />
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="4">
+            <TextBlock Foreground="Gray"
+                       Text="Loading room lobby..."
+                       Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <ProgressBar Margin="0,6,0,0"
+                         Height="8"
+                         IsIndeterminate="True"
+                         Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        </StackPanel>
+
+        <DockPanel Grid.Row="6" LastChildFill="False">
+            <TextBlock DockPanel.Dock="Left"
+                       FontWeight="SemiBold"
+                       Text="Players" />
+            <TextBlock DockPanel.Dock="Right"
+                       Foreground="Gray"
+                       Text="Refreshing lobby..."
+                       Visibility="{Binding IsRefreshing, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        </DockPanel>
 
         <ListBox Grid.Row="8"
                  Margin="0,0,0,8"
                  ItemsSource="{Binding Players}">
             <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <DockPanel LastChildFill="False">
-                        <TextBlock Text="{Binding DisplayName}" />
-                        <TextBlock Margin="8,0,0,0"
+                <DataTemplate DataType="{x:Type roomLobby:LobbyPlayerItemViewModel}">
+                    <Grid Margin="0,2,0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="{Binding DisplayName}" />
+                        <TextBlock Grid.Column="1"
+                                   Margin="8,0,0,0"
                                    Foreground="Gray"
                                    Text="{Binding RoleLabel}" />
-                    </DockPanel>
+                    </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
 
         <TextBlock Grid.Row="10"
                    Foreground="IndianRed"
-                   Text="{Binding ErrorMessage}" />
+                   Text="{Binding ErrorMessage}"
+                   TextWrapping="Wrap" />
 
-        <Button Grid.Row="12"
-                Height="34"
-                Width="170"
-                HorizontalAlignment="Left"
-                Command="{Binding BackToCreateRoomCommand}"
-                Content="Create another room" />
+        <StackPanel Grid.Row="12"
+                    Orientation="Horizontal">
+            <Button Height="34"
+                    Width="170"
+                    HorizontalAlignment="Left"
+                    Command="{Binding BackToCreateRoomCommand}"
+                    Content="Create another room" />
 
-        <ProgressBar Grid.Row="12"
-                     Margin="180,13,0,13"
-                     Height="8"
-                     IsIndeterminate="True"
-                     VerticalAlignment="Center"
-                     Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <ProgressBar Margin="12,13,0,13"
+                         Width="120"
+                         Height="8"
+                         IsIndeterminate="True"
+                         VerticalAlignment="Center"
+                         Visibility="{Binding IsRefreshing, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        </StackPanel>
     </Grid>
 </UserControl>

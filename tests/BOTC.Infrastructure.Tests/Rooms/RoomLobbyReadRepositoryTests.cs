@@ -1,4 +1,4 @@
-﻿using BOTC.Domain.Rooms;
+﻿﻿using BOTC.Domain.Rooms;
 using BOTC.Infrastructure.Persistence;
 using BOTC.Infrastructure.Persistence.Rooms;
 using BOTC.Infrastructure.Rooms;
@@ -72,7 +72,10 @@ public sealed class RoomLobbyReadRepositoryTests : IDisposable
         Assert.Equal("AB12CD", result!.RoomCode.Value);
         Assert.Equal(RoomStatus.WaitingForPlayers, result.Status);
         Assert.Equal(2, result.Players.Count);
-        Assert.Contains(result.Players, player => player.DisplayName == "Host" && player.Role == RoomPlayerRole.Host);
+        Assert.Equal("Host", result.Players[0].DisplayName);
+        Assert.Equal(RoomPlayerRole.Host, result.Players[0].Role);
+        Assert.Equal("Alice", result.Players[1].DisplayName);
+        Assert.Equal(RoomPlayerRole.Player, result.Players[1].Role);
         Assert.Empty(dbContext.ChangeTracker.Entries());
     }
 
