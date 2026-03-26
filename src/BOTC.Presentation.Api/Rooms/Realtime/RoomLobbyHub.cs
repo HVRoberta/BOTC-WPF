@@ -1,7 +1,6 @@
-﻿using BOTC.Contracts.Rooms;
-using Microsoft.AspNetCore.SignalR;
+﻿using Microsoft.AspNetCore.SignalR;
 
-namespace BOTC.Presentation.Api.Rooms;
+namespace BOTC.Presentation.Api.Rooms.Realtime;
 
 public sealed class RoomLobbyHub : Hub
 {

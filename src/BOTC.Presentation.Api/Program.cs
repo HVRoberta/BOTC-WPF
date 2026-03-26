@@ -3,6 +3,7 @@ using BOTC.Contracts.Rooms;
 using BOTC.Infrastructure;
 using BOTC.Infrastructure.Persistence;
 using BOTC.Presentation.Api.Rooms;
+using BOTC.Presentation.Api.Rooms.Realtime;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);

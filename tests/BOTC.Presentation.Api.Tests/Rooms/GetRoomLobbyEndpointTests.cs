@@ -88,7 +88,7 @@ public sealed class GetRoomLobbyEndpointTests
         GetRoomLobbyHandler handler,
         CancellationToken cancellationToken)
     {
-        var method = typeof(RoomsEndpoints).GetMethod(
+        var method = typeof(GetRoomLobbyEndpoints).GetMethod(
             "GetRoomLobbyAsync",
             BindingFlags.Static | BindingFlags.NonPublic,
             null,
