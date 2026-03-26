@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+﻿﻿using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using BOTC.Application.Abstractions.Persistence;
@@ -133,7 +133,10 @@ public sealed class CreateRoomEndpointTests
     {
         var method = typeof(RoomsEndpoints).GetMethod(
             "CreateRoomAsync",
-            BindingFlags.Static | BindingFlags.NonPublic);
+            BindingFlags.Static | BindingFlags.NonPublic,
+            null,
+            [typeof(CreateRoomRequest), typeof(CreateRoomHandler), typeof(CancellationToken)],
+            null);
 
         Assert.NotNull(method);
 
@@ -220,4 +223,3 @@ public sealed class CreateRoomEndpointTests
         }
     }
 }
-

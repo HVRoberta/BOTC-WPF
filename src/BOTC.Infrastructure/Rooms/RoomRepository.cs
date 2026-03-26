@@ -1,4 +1,5 @@
-﻿using BOTC.Application.Abstractions.Persistence;
+﻿﻿using BOTC.Application.Abstractions.Persistence;
+using BOTC.Application.Features.Rooms.JoinRoom;
 using BOTC.Domain.Rooms;
 using BOTC.Infrastructure.Persistence;
 using BOTC.Infrastructure.Persistence.Rooms;
@@ -7,34 +8,88 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BOTC.Infrastructure.Rooms;
 
-public sealed class RoomRepository : IRoomRepository
+public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository
 {
     private const int SqliteConstraintErrorCode = 19;
     private const int SqliteConstraintUniqueExtendedErrorCode = 2067;
+    private const int SqliteConstraintForeignKeyExtendedErrorCode = 787;
 
-    private readonly BotcDbContext dbContext;
+    private readonly BotcDbContext _dbContext;
 
     public RoomRepository(BotcDbContext dbContext)
     {
-        this.dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
     }
 
     public async Task<bool> TryAddAsync(Room room, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(room);
-        
+
         var entity = MapToEntity(room);
-        dbContext.Rooms.Add(entity);
+        _dbContext.Rooms.Add(entity);
 
         try
         {
-            await dbContext.SaveChangesAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
             return true;
         }
         catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
         {
-            dbContext.Entry(entity).State = EntityState.Detached;
+            _dbContext.Entry(entity).State = EntityState.Detached;
             return false;
+        }
+    }
+
+    public async Task<Room?> GetByCodeAsync(RoomCode roomCode, CancellationToken cancellationToken)
+    {
+        var entity = await _dbContext.Rooms
+            .Include(room => room.Players)
+            .SingleOrDefaultAsync(room => room.Code == roomCode.Value, cancellationToken);
+
+        return entity is null ? null : MapToDomain(entity);
+    }
+
+    public async Task<bool> TrySaveAsync(Room room, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(room);
+
+        var roomExists = await _dbContext.Rooms
+            .AnyAsync(existingRoom => existingRoom.Id == room.Id.Value, cancellationToken);
+
+        if (!roomExists)
+        {
+            throw new RoomJoinSaveRoomMissingException(room.Id);
+        }
+
+        var persistedPlayerIds = await _dbContext.RoomPlayers
+            .Where(player => player.RoomId == room.Id.Value)
+            .Select(player => player.Id)
+            .ToHashSetAsync(cancellationToken);
+
+        var playersToInsert = room.Players
+            .Where(player => !persistedPlayerIds.Contains(player.Id.Value))
+            .Select(player => MapToEntity(player, room.Id))
+            .ToArray();
+
+        if (playersToInsert.Length == 0)
+        {
+            return true;
+        }
+
+        _dbContext.RoomPlayers.AddRange(playersToInsert);
+
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
+        {
+            return false;
+        }
+        catch (DbUpdateException exception) when (IsForeignKeyConstraintViolation(exception))
+        {
+            throw new RoomJoinSaveRoomMissingException(room.Id);
         }
     }
 
@@ -44,16 +99,74 @@ public sealed class RoomRepository : IRoomRepository
         {
             Id = room.Id.Value,
             Code = room.Code.Value,
-            HostDisplayName = room.HostDisplayName,
             Status = (int)room.Status,
-            CreatedAtUtc = room.CreatedAtUtc
+            CreatedAtUtc = room.CreatedAtUtc,
+            Players = room.Players
+                .Select(player => MapToEntity(player, room.Id))
+                .ToList()
         };
     }
-    
+
+    private static RoomPlayerEntity MapToEntity(RoomPlayer player, RoomId roomId)
+    {
+        return new RoomPlayerEntity
+        {
+            Id = player.Id.Value,
+            RoomId = roomId.Value,
+            DisplayName = player.DisplayName,
+            NormalizedDisplayName = player.NormalizedDisplayName,
+            Role = (int)player.Role,
+            JoinedAtUtc = player.JoinedAtUtc
+        };
+    }
+
+    private static Room MapToDomain(RoomEntity entity)
+    {
+        if (!Enum.IsDefined(typeof(RoomStatus), entity.Status))
+        {
+            throw new InvalidOperationException(
+                $"Room '{entity.Code}' contains invalid persisted status value '{entity.Status}'.");
+        }
+
+        var players = entity.Players
+            .Select(MapToDomain)
+            .ToArray();
+
+        return Room.Rehydrate(
+            new RoomId(entity.Id),
+            new RoomCode(entity.Code),
+            players,
+            (RoomStatus)entity.Status,
+            entity.CreatedAtUtc);
+    }
+
+    private static RoomPlayer MapToDomain(RoomPlayerEntity entity)
+    {
+        if (!Enum.IsDefined(typeof(RoomPlayerRole), entity.Role))
+        {
+            throw new InvalidOperationException(
+                $"Room player '{entity.Id}' contains invalid persisted role value '{entity.Role}'.");
+        }
+
+        return RoomPlayer.Rehydrate(
+            new RoomPlayerId(entity.Id),
+            entity.DisplayName,
+            entity.NormalizedDisplayName,
+            (RoomPlayerRole)entity.Role,
+            entity.JoinedAtUtc);
+    }
+
     private static bool IsUniqueConstraintViolation(DbUpdateException exception)
     {
         return exception.InnerException is SqliteException sqliteException
                && sqliteException.SqliteErrorCode == SqliteConstraintErrorCode
                && sqliteException.SqliteExtendedErrorCode == SqliteConstraintUniqueExtendedErrorCode;
+    }
+
+    private static bool IsForeignKeyConstraintViolation(DbUpdateException exception)
+    {
+        return exception.InnerException is SqliteException sqliteException
+               && sqliteException.SqliteErrorCode == SqliteConstraintErrorCode
+               && sqliteException.SqliteExtendedErrorCode == SqliteConstraintForeignKeyExtendedErrorCode;
     }
 }

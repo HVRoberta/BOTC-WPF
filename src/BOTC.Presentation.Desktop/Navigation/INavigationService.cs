@@ -7,5 +7,7 @@ public interface INavigationService
 {
     void NavigateToCreateRoom();
 
+    void NavigateToJoinRoom();
+
     Task NavigateToRoomLobbyAsync(string roomCode, CancellationToken cancellationToken);
 }

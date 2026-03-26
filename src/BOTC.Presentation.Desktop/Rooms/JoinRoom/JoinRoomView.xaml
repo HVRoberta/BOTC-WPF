@@ -1,10 +1,10 @@
-﻿<UserControl x:Class="BOTC.Presentation.Desktop.Rooms.CreateRoom.CreateRoomView"
+﻿<UserControl x:Class="BOTC.Presentation.Desktop.Rooms.JoinRoom.JoinRoomView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
-             d:DesignHeight="300"
+             d:DesignHeight="320"
              d:DesignWidth="420">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
@@ -19,37 +19,48 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="12" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="12" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock FontSize="22" FontWeight="SemiBold" Text="Create Room" />
+        <TextBlock FontSize="22" FontWeight="SemiBold" Text="Join Room" />
 
         <TextBlock Grid.Row="2"
                    Margin="0,0,0,4"
-                   Text="Host display name" />
+                   Text="Room code" />
         <TextBox Grid.Row="2"
                  Margin="0,22,0,0"
-                 Text="{Binding HostDisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                 CharacterCasing="Upper"
+                 MaxLength="6"
+                 Text="{Binding RoomCode, UpdateSourceTrigger=PropertyChanged}" />
 
-        <StackPanel Grid.Row="4"
+        <TextBlock Grid.Row="4"
+                   Margin="0,0,0,4"
+                   Text="Display name" />
+        <TextBox Grid.Row="4"
+                 Margin="0,22,0,0"
+                 Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+
+        <StackPanel Grid.Row="6"
                     Orientation="Horizontal">
             <Button Height="34"
                     Margin="0,0,12,0"
-                    HorizontalAlignment="Left"
                     Padding="20,0"
-                    Command="{Binding CreateRoomCommand}"
-                    Content="Create room" />
+                    Command="{Binding JoinRoomCommand}"
+                    Content="Join room" />
             <Button Height="34"
                     Padding="20,0"
-                    Command="{Binding NavigateToJoinRoomCommand}"
-                    Content="Join room" />
+                    Command="{Binding BackToCreateRoomCommand}"
+                    Content="Back" />
         </StackPanel>
 
-        <TextBlock Grid.Row="6"
+        <TextBlock Grid.Row="8"
                    Foreground="IndianRed"
                    Text="{Binding ErrorMessage}" />
 
-        <ProgressBar Grid.Row="7"
+        <ProgressBar Grid.Row="10"
                      Margin="0,16,0,0"
                      Height="8"
                      IsIndeterminate="True"

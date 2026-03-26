@@ -2,6 +2,7 @@
 using BOTC.Infrastructure;
 using BOTC.Infrastructure.Persistence;
 using BOTC.Presentation.Api.Rooms;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +19,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<BotcDbContext>();
-    dbContext.Database.EnsureCreated();
+    dbContext.Database.Migrate();
 }
 
 app.UseSwagger();

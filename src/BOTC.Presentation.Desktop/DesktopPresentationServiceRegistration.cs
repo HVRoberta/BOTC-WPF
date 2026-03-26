@@ -1,6 +1,7 @@
-﻿﻿using BOTC.Presentation.Desktop.Navigation;
+﻿using BOTC.Presentation.Desktop.Navigation;
 using BOTC.Presentation.Desktop.Rooms;
 using BOTC.Presentation.Desktop.Rooms.CreateRoom;
+using BOTC.Presentation.Desktop.Rooms.JoinRoom;
 using BOTC.Presentation.Desktop.Rooms.RoomLobby;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,6 +32,7 @@ public static class DesktopPresentationServiceRegistration
         services.AddSingleton<MainWindowViewModel>();
 
         services.AddTransient<CreateRoomViewModel>();
+        services.AddTransient<JoinRoomViewModel>();
         services.AddTransient<RoomLobbyViewModel>();
 
         services.AddSingleton<INavigationService, NavigationService>();

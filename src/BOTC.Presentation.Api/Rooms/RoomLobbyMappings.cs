@@ -15,8 +15,26 @@ internal static class RoomLobbyMappings
     {
         return new GetRoomLobbyResponse(
             result.RoomCode.Value,
-            result.HostDisplayName,
+            result.Players.Select(ToLobbyPlayerResponse).ToArray(),
             ToContractStatus(result.Status));
+    }
+
+    private static LobbyPlayerResponse ToLobbyPlayerResponse(LobbyPlayerResult player)
+    {
+        return new LobbyPlayerResponse(
+            player.PlayerId.Value.ToString(),
+            player.DisplayName,
+            ToIsHost(player.Role));
+    }
+
+    private static bool ToIsHost(RoomPlayerRole role)
+    {
+        return role switch
+        {
+            RoomPlayerRole.Host => true,
+            RoomPlayerRole.Player => false,
+            _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unsupported room player role.")
+        };
     }
 
     private static RoomStatusContract ToContractStatus(RoomStatus status)
@@ -28,4 +46,3 @@ internal static class RoomLobbyMappings
         };
     }
 }
-
