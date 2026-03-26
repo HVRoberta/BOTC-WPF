@@ -1,4 +1,4 @@
-﻿using System.Net;
+﻿﻿using System.Net;
 using System.Net.Http;
 using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Desktop.Navigation;
@@ -65,7 +65,7 @@ public partial class JoinRoomViewModel(
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.Conflict)
         {
-            ErrorMessage = "Unable to join room with that display name.";
+            ErrorMessage = "Unable to join room due to a conflict. Please try again.";
         }
         catch (HttpRequestException)
         {
@@ -87,4 +87,3 @@ public partial class JoinRoomViewModel(
         navigationService.NavigateToCreateRoom();
     }
 }
-

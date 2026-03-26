@@ -66,6 +66,19 @@ public sealed class JoinRoomEndpointTests
         Assert.Equal(StatusCodes.Status409Conflict, response.StatusCode);
     }
 
+    [Fact]
+    public async Task JoinRoomAsync_WhenRoomDisappearsDuringSave_Returns404()
+    {
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+        var exceptionToThrow = new RoomJoinSaveRoomMissingException(room.Id);
+        var handler = new JoinRoomHandler(new FakeRoomJoinRepository(room, throwOnSave: exceptionToThrow));
+
+        var result = await InvokeJoinRoomAsync("AB12CD", new JoinRoomRequest("Alice"), handler, CancellationToken.None);
+        var response = await ExecuteResultAsync(result);
+
+        Assert.Equal(StatusCodes.Status404NotFound, response.StatusCode);
+    }
+
     private static async Task<IResult> InvokeJoinRoomAsync(
         string roomCode,
         JoinRoomRequest request,
@@ -115,25 +128,33 @@ public sealed class JoinRoomEndpointTests
 
     private sealed class FakeRoomJoinRepository : IRoomJoinRepository
     {
-        private readonly Room? room;
-        private readonly bool trySaveResult;
+        private readonly Room? _room;
+        private readonly bool _trySaveResult;
+        private readonly Exception? _throwOnSave;
 
-        public FakeRoomJoinRepository(Room? room = null, bool trySaveResult = true)
+        public FakeRoomJoinRepository(Room? room = null, bool trySaveResult = true, Exception? throwOnSave = null)
         {
-            this.room = room;
-            this.trySaveResult = trySaveResult;
+            _room = room;
+            _trySaveResult = trySaveResult;
+            _throwOnSave = throwOnSave;
         }
 
         public Task<Room?> GetByCodeAsync(RoomCode roomCode, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(room);
+            return Task.FromResult(_room);
         }
 
         public Task<bool> TrySaveAsync(Room roomToSave, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(trySaveResult);
+
+            if (_throwOnSave is not null)
+            {
+                throw _throwOnSave;
+            }
+
+            return Task.FromResult(_trySaveResult);
         }
     }
 }

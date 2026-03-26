@@ -1,4 +1,4 @@
-﻿using BOTC.Application.Features.Rooms.JoinRoom;
+﻿﻿using BOTC.Application.Features.Rooms.JoinRoom;
 using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Tests.Features.Rooms.JoinRoom;
@@ -76,15 +76,30 @@ public sealed class JoinRoomHandlerTests
         await Assert.ThrowsAsync<RoomJoinConflictException>(act);
     }
 
+    [Fact]
+    public async Task HandleAsync_WhenSaveReportsRoomMissing_ThrowsRoomJoinNotFoundException()
+    {
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+        var repository = new FakeRoomJoinRepository(room, throwOnSave: new RoomJoinSaveRoomMissingException(room.Id));
+        var handler = new JoinRoomHandler(repository);
+
+        var act = async () => await handler.HandleAsync(new JoinRoomCommand("AB12CD", "Alice"), CancellationToken.None);
+
+        var exception = await Assert.ThrowsAsync<RoomJoinNotFoundException>(act);
+        Assert.Equal("AB12CD", exception.RoomCode.Value);
+    }
+
     private sealed class FakeRoomJoinRepository : IRoomJoinRepository
     {
-        private readonly Room? room;
-        private readonly bool trySaveResult;
+        private readonly Room? _room;
+        private readonly bool _trySaveResult;
+        private readonly Exception? _throwOnSave;
 
-        public FakeRoomJoinRepository(Room? room = null, bool trySaveResult = true)
+        public FakeRoomJoinRepository(Room? room = null, bool trySaveResult = true, Exception? throwOnSave = null)
         {
-            this.room = room;
-            this.trySaveResult = trySaveResult;
+            _room = room;
+            _trySaveResult = trySaveResult;
+            _throwOnSave = throwOnSave;
         }
 
         public int GetByCodeCallCount { get; private set; }
@@ -95,15 +110,20 @@ public sealed class JoinRoomHandlerTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             GetByCodeCallCount++;
-            return Task.FromResult(room);
+            return Task.FromResult(_room);
         }
 
         public Task<bool> TrySaveAsync(Room roomToSave, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             TrySaveCallCount++;
-            return Task.FromResult(trySaveResult);
+
+            if (_throwOnSave is not null)
+            {
+                throw _throwOnSave;
+            }
+
+            return Task.FromResult(_trySaveResult);
         }
     }
 }
-

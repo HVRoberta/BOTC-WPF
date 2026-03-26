@@ -1,4 +1,5 @@
-﻿using BOTC.Domain.Rooms;
+﻿using BOTC.Application.Features.Rooms.JoinRoom;
+using BOTC.Domain.Rooms;
 using BOTC.Infrastructure.Persistence;
 using BOTC.Infrastructure.Rooms;
 using Microsoft.Data.Sqlite;
@@ -126,6 +127,19 @@ public sealed class RoomRepositoryTests : IDisposable
 
         // Assert
         Assert.False(secondSave);
+    }
+
+    [Fact]
+    public async Task TrySaveAsync_WhenRoomNoLongerExists_ThrowsRoomJoinSaveRoomMissingException()
+    {
+        // Arrange
+        var room = CreateRoom("AB12CD", "Host");
+
+        // Act
+        var act = async () => await repository.TrySaveAsync(room, CancellationToken.None);
+
+        // Assert
+        await Assert.ThrowsAsync<RoomJoinSaveRoomMissingException>(act);
     }
 
     private static Room CreateRoom(string code, string hostDisplayName)

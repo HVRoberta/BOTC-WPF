@@ -1,10 +1,13 @@
-﻿namespace BOTC.Domain.Rooms;
+﻿using System.Collections.ObjectModel;
+
+namespace BOTC.Domain.Rooms;
 
 public sealed class Room
 {
     private const int MaxPlayers = 20;
 
     private readonly List<RoomPlayer> players;
+    private readonly ReadOnlyCollection<RoomPlayer> readOnlyPlayers;
 
     private Room(
         RoomId id,
@@ -16,6 +19,7 @@ public sealed class Room
         Id = id;
         Code = code;
         this.players = players.ToList();
+        readOnlyPlayers = this.players.AsReadOnly();
         Status = ValidateStatus(status);
         CreatedAtUtc = EnsureUtc(createdAtUtc, nameof(createdAtUtc));
 
@@ -26,7 +30,7 @@ public sealed class Room
 
     public RoomCode Code { get; }
 
-    public IReadOnlyCollection<RoomPlayer> Players => players;
+    public IReadOnlyCollection<RoomPlayer> Players => readOnlyPlayers;
 
     public string HostDisplayName => GetHost().DisplayName;
 
@@ -69,12 +73,12 @@ public sealed class Room
         var candidateNormalizedName = RoomPlayer.NormalizeDisplayName(displayName);
         if (players.Any(p => string.Equals(p.NormalizedDisplayName, candidateNormalizedName, StringComparison.Ordinal)))
         {
-            throw new InvalidOperationException("Display name is already in use for this room.");
+            throw new RoomJoinDisplayNameAlreadyInUseException();
         }
 
         if (players.Count >= MaxPlayers)
         {
-            throw new InvalidOperationException($"Room cannot exceed {MaxPlayers} participants.");
+            throw new RoomJoinCapacityReachedException(MaxPlayers);
         }
 
         var player = RoomPlayer.Create(RoomPlayerId.New(), displayName, RoomPlayerRole.Player, joinedAtUtc);
@@ -102,7 +106,7 @@ public sealed class Room
     {
         if (Status != RoomStatus.WaitingForPlayers)
         {
-            throw new InvalidOperationException("Room does not accept new players in its current state.");
+            throw new RoomJoinNotAllowedException();
         }
     }
 

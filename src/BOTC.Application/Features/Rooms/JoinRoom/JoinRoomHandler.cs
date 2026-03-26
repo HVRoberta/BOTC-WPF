@@ -4,11 +4,11 @@ namespace BOTC.Application.Features.Rooms.JoinRoom;
 
 public sealed class JoinRoomHandler
 {
-    private readonly IRoomJoinRepository roomJoinRepository;
+    private readonly IRoomJoinRepository _roomJoinRepository;
 
     public JoinRoomHandler(IRoomJoinRepository roomJoinRepository)
     {
-        this.roomJoinRepository = roomJoinRepository ?? throw new ArgumentNullException(nameof(roomJoinRepository));
+        _roomJoinRepository = roomJoinRepository ?? throw new ArgumentNullException(nameof(roomJoinRepository));
     }
 
     public async Task<JoinRoomResult> HandleAsync(JoinRoomCommand command, CancellationToken cancellationToken)
@@ -16,7 +16,7 @@ public sealed class JoinRoomHandler
         ArgumentNullException.ThrowIfNull(command);
 
         var roomCode = new RoomCode(command.RoomCode);
-        var room = await roomJoinRepository.GetByCodeAsync(roomCode, cancellationToken);
+        var room = await _roomJoinRepository.GetByCodeAsync(roomCode, cancellationToken);
         if (room is null)
         {
             throw new RoomJoinNotFoundException(roomCode);
@@ -27,18 +27,24 @@ public sealed class JoinRoomHandler
         {
             joinedPlayer = room.JoinPlayer(command.DisplayName, DateTime.UtcNow);
         }
-        catch (InvalidOperationException exception)
+        catch (RoomJoinRejectedException exception)
         {
             throw new RoomJoinConflictException(exception.Message, exception);
         }
 
-        var saved = await roomJoinRepository.TrySaveAsync(room, cancellationToken);
-        if (!saved)
+        try
         {
-            throw new RoomJoinConflictException("Player display name is already in use for this room.");
+            var saved = await _roomJoinRepository.TrySaveAsync(room, cancellationToken);
+            if (!saved)
+            {
+                throw new RoomJoinConflictException("Unable to join room due to a conflicting room state.");
+            }
+        }
+        catch (RoomJoinSaveRoomMissingException)
+        {
+            throw new RoomJoinNotFoundException(roomCode);
         }
 
         return new JoinRoomResult(roomCode, joinedPlayer.Id, joinedPlayer.DisplayName);
     }
 }
-

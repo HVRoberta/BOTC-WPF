@@ -1,4 +1,4 @@
-﻿using BOTC.Application.Abstractions.Persistence;
+﻿﻿using BOTC.Application.Abstractions.Persistence;
 using BOTC.Application.Features.Rooms.JoinRoom;
 using BOTC.Domain.Rooms;
 using BOTC.Infrastructure.Persistence;
@@ -12,6 +12,7 @@ public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository
 {
     private const int SqliteConstraintErrorCode = 19;
     private const int SqliteConstraintUniqueExtendedErrorCode = 2067;
+    private const int SqliteConstraintForeignKeyExtendedErrorCode = 787;
 
     private readonly BotcDbContext _dbContext;
 
@@ -52,25 +53,30 @@ public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository
     {
         ArgumentNullException.ThrowIfNull(room);
 
-        var entity = await _dbContext.Rooms
-            .Include(existingRoom => existingRoom.Players)
-            .SingleOrDefaultAsync(existingRoom => existingRoom.Id == room.Id.Value, cancellationToken);
+        var roomExists = await _dbContext.Rooms
+            .AnyAsync(existingRoom => existingRoom.Id == room.Id.Value, cancellationToken);
 
-        if (entity is null)
+        if (!roomExists)
         {
-            return false;
+            throw new RoomJoinSaveRoomMissingException(room.Id);
         }
 
-        entity.Status = (int)room.Status;
-
-        var persistedPlayerIds = entity.Players
+        var persistedPlayerIds = await _dbContext.RoomPlayers
+            .Where(player => player.RoomId == room.Id.Value)
             .Select(player => player.Id)
-            .ToHashSet();
+            .ToHashSetAsync(cancellationToken);
 
-        foreach (var player in room.Players.Where(player => !persistedPlayerIds.Contains(player.Id.Value)))
+        var playersToInsert = room.Players
+            .Where(player => !persistedPlayerIds.Contains(player.Id.Value))
+            .Select(player => MapToEntity(player, room.Id))
+            .ToArray();
+
+        if (playersToInsert.Length == 0)
         {
-            entity.Players.Add(MapToEntity(player, room.Id));
+            return true;
         }
+
+        _dbContext.RoomPlayers.AddRange(playersToInsert);
 
         try
         {
@@ -80,6 +86,10 @@ public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository
         catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
         {
             return false;
+        }
+        catch (DbUpdateException exception) when (IsForeignKeyConstraintViolation(exception))
+        {
+            throw new RoomJoinSaveRoomMissingException(room.Id);
         }
     }
 
@@ -151,5 +161,12 @@ public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository
         return exception.InnerException is SqliteException sqliteException
                && sqliteException.SqliteErrorCode == SqliteConstraintErrorCode
                && sqliteException.SqliteExtendedErrorCode == SqliteConstraintUniqueExtendedErrorCode;
+    }
+
+    private static bool IsForeignKeyConstraintViolation(DbUpdateException exception)
+    {
+        return exception.InnerException is SqliteException sqliteException
+               && sqliteException.SqliteErrorCode == SqliteConstraintErrorCode
+               && sqliteException.SqliteExtendedErrorCode == SqliteConstraintForeignKeyExtendedErrorCode;
     }
 }

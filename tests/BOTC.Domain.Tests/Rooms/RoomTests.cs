@@ -1,4 +1,4 @@
-﻿using BOTC.Domain.Rooms;
+﻿﻿using BOTC.Domain.Rooms;
 
 namespace BOTC.Domain.Tests.Rooms;
 
@@ -171,5 +171,27 @@ public sealed class RoomTests
 
         // Assert
         Assert.Throws<ArgumentException>(act);
+    }
+
+    [Fact]
+    public void Players_WhenExposed_CannotBeMutatedThroughCollectionInterface()
+    {
+        // Arrange
+        var room = Room.Create(
+            new RoomId(Guid.NewGuid()),
+            new RoomCode("AB12CD"),
+            "Host",
+            new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
+
+        // Act
+        var players = room.Players;
+
+        // Assert
+        Assert.IsNotType<List<RoomPlayer>>(players);
+
+        var collection = Assert.IsAssignableFrom<ICollection<RoomPlayer>>(players);
+        Assert.True(collection.IsReadOnly);
+        Assert.Throws<NotSupportedException>(() =>
+            collection.Add(RoomPlayer.Create(RoomPlayerId.New(), "Alice", RoomPlayerRole.Player, DateTime.UtcNow)));
     }
 }
