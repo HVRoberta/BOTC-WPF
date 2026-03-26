@@ -1,4 +1,4 @@
-﻿namespace BOTC.Presentation.Api.Rooms;
+﻿namespace BOTC.Presentation.Api.Rooms.Realtime;
 
 internal static class RoomLobbyGroups
 {

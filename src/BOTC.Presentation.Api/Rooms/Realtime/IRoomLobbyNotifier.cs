@@ -1,4 +1,4 @@
-﻿namespace BOTC.Presentation.Api.Rooms;
+﻿namespace BOTC.Presentation.Api.Rooms.Realtime;
 
 public interface IRoomLobbyNotifier
 {
