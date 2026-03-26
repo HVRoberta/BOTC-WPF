@@ -11,9 +11,11 @@ public sealed class BotcDbContext : DbContext
 
     public DbSet<RoomEntity> Rooms => Set<RoomEntity>();
 
+    public DbSet<RoomPlayerEntity> RoomPlayers => Set<RoomPlayerEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new RoomEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new RoomPlayerEntityConfiguration());
     }
 }
-

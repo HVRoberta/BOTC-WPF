@@ -11,7 +11,7 @@ public sealed class RoomLobbyReadRepositoryTests : IDisposable
 {
     private readonly SqliteConnection connection;
     private readonly BotcDbContext dbContext;
-    private readonly RoomLobbyReadRepository repository;
+    private readonly RoomLobbyQueryService repository;
 
     public RoomLobbyReadRepositoryTests()
     {
@@ -25,20 +25,41 @@ public sealed class RoomLobbyReadRepositoryTests : IDisposable
         dbContext = new BotcDbContext(options);
         dbContext.Database.EnsureCreated();
 
-        repository = new RoomLobbyReadRepository(dbContext);
+        repository = new RoomLobbyQueryService(dbContext);
     }
 
     [Fact]
     public async Task GetByRoomCodeAsync_WhenRoomExists_ReturnsMappedLobbyState()
     {
         // Arrange
+        var roomId = Guid.NewGuid();
         dbContext.Rooms.Add(new RoomEntity
         {
-            Id = Guid.NewGuid(),
+            Id = roomId,
             Code = "AB12CD",
-            HostDisplayName = "Host",
             Status = (int)RoomStatus.WaitingForPlayers,
-            CreatedAtUtc = DateTime.UtcNow
+            CreatedAtUtc = DateTime.UtcNow,
+            Players =
+            [
+                new RoomPlayerEntity
+                {
+                    Id = Guid.NewGuid(),
+                    RoomId = roomId,
+                    DisplayName = "Host",
+                    NormalizedDisplayName = "HOST",
+                    Role = (int)RoomPlayerRole.Host,
+                    JoinedAtUtc = DateTime.UtcNow
+                },
+                new RoomPlayerEntity
+                {
+                    Id = Guid.NewGuid(),
+                    RoomId = roomId,
+                    DisplayName = "Alice",
+                    NormalizedDisplayName = "ALICE",
+                    Role = (int)RoomPlayerRole.Player,
+                    JoinedAtUtc = DateTime.UtcNow.AddSeconds(1)
+                }
+            ]
         });
         await dbContext.SaveChangesAsync();
         dbContext.ChangeTracker.Clear();
@@ -49,8 +70,9 @@ public sealed class RoomLobbyReadRepositoryTests : IDisposable
         // Assert
         Assert.NotNull(result);
         Assert.Equal("AB12CD", result!.RoomCode.Value);
-        Assert.Equal("Host", result.HostDisplayName);
         Assert.Equal(RoomStatus.WaitingForPlayers, result.Status);
+        Assert.Equal(2, result.Players.Count);
+        Assert.Contains(result.Players, player => player.DisplayName == "Host" && player.Role == RoomPlayerRole.Host);
         Assert.Empty(dbContext.ChangeTracker.Entries());
     }
 
@@ -68,13 +90,25 @@ public sealed class RoomLobbyReadRepositoryTests : IDisposable
     public async Task GetByRoomCodeAsync_WhenPersistedStatusIsInvalid_ThrowsInvalidOperationException()
     {
         // Arrange
+        var roomId = Guid.NewGuid();
         dbContext.Rooms.Add(new RoomEntity
         {
-            Id = Guid.NewGuid(),
+            Id = roomId,
             Code = "AB12CD",
-            HostDisplayName = "Host",
             Status = 999,
-            CreatedAtUtc = DateTime.UtcNow
+            CreatedAtUtc = DateTime.UtcNow,
+            Players =
+            [
+                new RoomPlayerEntity
+                {
+                    Id = Guid.NewGuid(),
+                    RoomId = roomId,
+                    DisplayName = "Host",
+                    NormalizedDisplayName = "HOST",
+                    Role = (int)RoomPlayerRole.Host,
+                    JoinedAtUtc = DateTime.UtcNow
+                }
+            ]
         });
         await dbContext.SaveChangesAsync();
         dbContext.ChangeTracker.Clear();
@@ -93,4 +127,3 @@ public sealed class RoomLobbyReadRepositoryTests : IDisposable
         connection.Dispose();
     }
 }
-

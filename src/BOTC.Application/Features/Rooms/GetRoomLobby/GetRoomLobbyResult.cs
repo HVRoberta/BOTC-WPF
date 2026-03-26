@@ -2,8 +2,12 @@
 
 namespace BOTC.Application.Features.Rooms.GetRoomLobby;
 
+public sealed record LobbyPlayerResult(
+    RoomPlayerId PlayerId,
+    string DisplayName,
+    RoomPlayerRole Role);
+
 public sealed record GetRoomLobbyResult(
     RoomCode RoomCode,
-    string HostDisplayName,
+    IReadOnlyCollection<LobbyPlayerResult> Players,
     RoomStatus Status);
-

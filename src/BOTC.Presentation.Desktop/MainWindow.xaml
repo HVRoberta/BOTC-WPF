@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:createRoom="clr-namespace:BOTC.Presentation.Desktop.Rooms.CreateRoom"
+        xmlns:joinRoom="clr-namespace:BOTC.Presentation.Desktop.Rooms.JoinRoom"
         xmlns:roomLobby="clr-namespace:BOTC.Presentation.Desktop.Rooms.RoomLobby"
         mc:Ignorable="d"
         Title="Blood on the Clocktower"
@@ -14,6 +15,10 @@
     <Window.Resources>
         <DataTemplate DataType="{x:Type createRoom:CreateRoomViewModel}">
             <createRoom:CreateRoomView />
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type joinRoom:JoinRoomViewModel}">
+            <joinRoom:JoinRoomView />
         </DataTemplate>
 
         <DataTemplate DataType="{x:Type roomLobby:RoomLobbyViewModel}">

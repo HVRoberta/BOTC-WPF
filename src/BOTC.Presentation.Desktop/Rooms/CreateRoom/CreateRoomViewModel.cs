@@ -54,4 +54,10 @@ public partial class CreateRoomViewModel(
             IsBusy = false;
         }
     }
+
+    [RelayCommand]
+    private void NavigateToJoinRoom()
+    {
+        navigationService.NavigateToJoinRoom();
+    }
 }

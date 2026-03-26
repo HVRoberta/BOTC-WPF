@@ -2,22 +2,33 @@
 
 public sealed class Room
 {
-    private const int MaxHostDisplayNameLength = 50;
-    
-    private Room(RoomId id, RoomCode code, string hostDisplayName, DateTime createdAtUtc)
+    private const int MaxPlayers = 20;
+
+    private readonly List<RoomPlayer> players;
+
+    private Room(
+        RoomId id,
+        RoomCode code,
+        IEnumerable<RoomPlayer> players,
+        RoomStatus status,
+        DateTime createdAtUtc)
     {
         Id = id;
         Code = code;
-        HostDisplayName = ValidateHostDisplayName(hostDisplayName);
+        this.players = players.ToList();
+        Status = ValidateStatus(status);
         CreatedAtUtc = EnsureUtc(createdAtUtc, nameof(createdAtUtc));
-        Status = RoomStatus.WaitingForPlayers;
+
+        EnsurePlayerInvariants(this.players);
     }
 
     public RoomId Id { get; }
 
     public RoomCode Code { get; }
 
-    public string HostDisplayName { get; private set; }
+    public IReadOnlyCollection<RoomPlayer> Players => players;
+
+    public string HostDisplayName => GetHost().DisplayName;
 
     public RoomStatus Status { get; private set; }
 
@@ -25,31 +36,123 @@ public sealed class Room
 
     public static Room Create(RoomId id, RoomCode code, string hostDisplayName, DateTime createdAtUtc)
     {
-        return new Room(id, code, hostDisplayName, createdAtUtc);
+        var hostPlayer = RoomPlayer.Create(
+            RoomPlayerId.New(),
+            hostDisplayName,
+            RoomPlayerRole.Host,
+            createdAtUtc);
+
+        return new Room(
+            id,
+            code,
+            [hostPlayer],
+            RoomStatus.WaitingForPlayers,
+            createdAtUtc);
+    }
+
+    public static Room Rehydrate(
+        RoomId id,
+        RoomCode code,
+        IEnumerable<RoomPlayer> players,
+        RoomStatus status,
+        DateTime createdAtUtc)
+    {
+        ArgumentNullException.ThrowIfNull(players);
+
+        return new Room(id, code, players, status, createdAtUtc);
+    }
+
+    public RoomPlayer JoinPlayer(string displayName, DateTime joinedAtUtc)
+    {
+        EnsureJoinAllowed();
+
+        var candidateNormalizedName = RoomPlayer.NormalizeDisplayName(displayName);
+        if (players.Any(p => string.Equals(p.NormalizedDisplayName, candidateNormalizedName, StringComparison.Ordinal)))
+        {
+            throw new InvalidOperationException("Display name is already in use for this room.");
+        }
+
+        if (players.Count >= MaxPlayers)
+        {
+            throw new InvalidOperationException($"Room cannot exceed {MaxPlayers} participants.");
+        }
+
+        var player = RoomPlayer.Create(RoomPlayerId.New(), displayName, RoomPlayerRole.Player, joinedAtUtc);
+        players.Add(player);
+
+        return player;
     }
 
     public void RenameHost(string hostDisplayName)
     {
-        HostDisplayName = ValidateHostDisplayName(hostDisplayName);
+        var host = GetHost();
+        var candidateNormalizedName = RoomPlayer.NormalizeDisplayName(hostDisplayName);
+
+        if (players.Any(p => p.Id != host.Id && string.Equals(p.NormalizedDisplayName, candidateNormalizedName, StringComparison.Ordinal)))
+        {
+            throw new InvalidOperationException("Display name is already in use for this room.");
+        }
+
+        var renamedHost = RoomPlayer.Create(host.Id, hostDisplayName, RoomPlayerRole.Host, host.JoinedAtUtc);
+        var hostIndex = players.FindIndex(p => p.Id == host.Id);
+        players[hostIndex] = renamedHost;
     }
 
-    private static string ValidateHostDisplayName(string hostDisplayName)
+    private void EnsureJoinAllowed()
     {
-        if (string.IsNullOrWhiteSpace(hostDisplayName))
+        if (Status != RoomStatus.WaitingForPlayers)
         {
-            throw new ArgumentException("Host display name is required.", nameof(hostDisplayName));
+            throw new InvalidOperationException("Room does not accept new players in its current state.");
+        }
+    }
+
+    private RoomPlayer GetHost()
+    {
+        var host = players.SingleOrDefault(player => player.Role == RoomPlayerRole.Host);
+        if (host is null)
+        {
+            throw new InvalidOperationException("Room must have exactly one host player.");
         }
 
-        var normalized = hostDisplayName.Trim();
+        return host;
+    }
 
-        if (normalized.Length > MaxHostDisplayNameLength)
+    private static void EnsurePlayerInvariants(IReadOnlyCollection<RoomPlayer> players)
+    {
+        if (players.Count == 0)
         {
-            throw new ArgumentException(
-                $"Host display name must not exceed {MaxHostDisplayNameLength} characters.",
-                nameof(hostDisplayName));
+            throw new ArgumentException("Room must contain at least one player.", nameof(players));
         }
 
-        return normalized;
+        var hostCount = players.Count(player => player.Role == RoomPlayerRole.Host);
+        if (hostCount != 1)
+        {
+            throw new ArgumentException("Room must have exactly one host player.", nameof(players));
+        }
+
+        var duplicatedDisplayName = players
+            .GroupBy(player => player.NormalizedDisplayName, StringComparer.Ordinal)
+            .Any(group => group.Count() > 1);
+
+        if (duplicatedDisplayName)
+        {
+            throw new ArgumentException("Player display names must be unique within a room.", nameof(players));
+        }
+
+        if (players.Count > MaxPlayers)
+        {
+            throw new ArgumentException($"Room cannot exceed {MaxPlayers} participants.", nameof(players));
+        }
+    }
+
+    private static RoomStatus ValidateStatus(RoomStatus status)
+    {
+        if (!Enum.IsDefined(status))
+        {
+            throw new ArgumentOutOfRangeException(nameof(status), status, "Invalid room status.");
+        }
+
+        return status;
     }
 
     private static DateTime EnsureUtc(DateTime value, string paramName)
@@ -67,4 +170,3 @@ public sealed class Room
         throw new ArgumentException("Created date must specify UTC or Local kind.", paramName);
     }
 }
-

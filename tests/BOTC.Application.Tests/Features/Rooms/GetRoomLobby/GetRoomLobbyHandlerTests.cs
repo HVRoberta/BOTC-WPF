@@ -68,7 +68,10 @@ public sealed class GetRoomLobbyHandlerTests
         var repository = new FakeRoomLobbyQueryService();
         repository.SeedLobby(new GetRoomLobbyResult(
             new RoomCode("AB12CD"),
-            "Host",
+            [
+                new LobbyPlayerResult(new RoomPlayerId(Guid.NewGuid()), "Host", RoomPlayerRole.Host),
+                new LobbyPlayerResult(new RoomPlayerId(Guid.NewGuid()), "Alice", RoomPlayerRole.Player)
+            ],
             RoomStatus.WaitingForPlayers));
 
         var handler = new GetRoomLobbyHandler(repository);
@@ -78,8 +81,9 @@ public sealed class GetRoomLobbyHandlerTests
 
         // Assert
         Assert.Equal("AB12CD", result.RoomCode.Value);
-        Assert.Equal("Host", result.HostDisplayName);
         Assert.Equal(RoomStatus.WaitingForPlayers, result.Status);
+        Assert.Equal(2, result.Players.Count);
+        Assert.Contains(result.Players, player => player.Role == RoomPlayerRole.Host && player.DisplayName == "Host");
         Assert.Equal(1, repository.GetByRoomCodeCallCount);
     }
 
@@ -90,16 +94,17 @@ public sealed class GetRoomLobbyHandlerTests
         var repository = new FakeRoomLobbyQueryService();
         repository.SeedLobby(new GetRoomLobbyResult(
             new RoomCode("AB12CD"),
-            "Host",
+            [new LobbyPlayerResult(new RoomPlayerId(Guid.NewGuid()), "Host", RoomPlayerRole.Host)],
             RoomStatus.WaitingForPlayers));
 
         var handler = new GetRoomLobbyHandler(repository);
 
         using var cancellationTokenSource = new CancellationTokenSource();
         cancellationTokenSource.Cancel();
+        var cancellationToken = cancellationTokenSource.Token;
 
         // Act
-        var act = async () => await handler.HandleAsync(new GetRoomLobbyQuery("AB12CD"), cancellationTokenSource.Token);
+        var act = async () => await handler.HandleAsync(new GetRoomLobbyQuery("AB12CD"), cancellationToken);
 
         // Assert
         await Assert.ThrowsAsync<OperationCanceledException>(act);
@@ -107,7 +112,7 @@ public sealed class GetRoomLobbyHandlerTests
 
     private sealed class FakeRoomLobbyQueryService : IRoomLobbyQueryService
     {
-        private readonly Dictionary<string, GetRoomLobbyResult> lobbiesByCode = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, GetRoomLobbyResult> _lobbiesByCode = new(StringComparer.Ordinal);
 
         public int GetByRoomCodeCallCount { get; private set; }
 
@@ -116,14 +121,13 @@ public sealed class GetRoomLobbyHandlerTests
             cancellationToken.ThrowIfCancellationRequested();
             GetByRoomCodeCallCount++;
 
-            lobbiesByCode.TryGetValue(roomCode.Value, out var result);
+            _lobbiesByCode.TryGetValue(roomCode.Value, out var result);
             return Task.FromResult(result);
         }
 
         public void SeedLobby(GetRoomLobbyResult lobby)
         {
-            lobbiesByCode[lobby.RoomCode.Value] = lobby;
+            _lobbiesByCode[lobby.RoomCode.Value] = lobby;
         }
     }
 }
-

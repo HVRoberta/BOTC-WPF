@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+﻿﻿using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using BOTC.Application.Features.Rooms.GetRoomLobby;
@@ -15,10 +15,13 @@ public sealed class GetRoomLobbyEndpointTests
     public async Task GetRoomLobbyAsync_WhenRoomExists_Returns200WithLobbyPayload()
     {
         // Arrange
-        var repository = new FakeRoomLobbyReadRepository();
+        var repository = new FakeRoomLobbyQueryService();
         repository.SeedLobby(new GetRoomLobbyResult(
             new RoomCode("AB12CD"),
-            "Host",
+            [
+                new LobbyPlayerResult(new RoomPlayerId(Guid.Parse("11111111-1111-1111-1111-111111111111")), "Host", RoomPlayerRole.Host),
+                new LobbyPlayerResult(new RoomPlayerId(Guid.Parse("22222222-2222-2222-2222-222222222222")), "Alice", RoomPlayerRole.Player)
+            ],
             RoomStatus.WaitingForPlayers));
 
         var handler = new GetRoomLobbyHandler(repository);
@@ -34,15 +37,19 @@ public sealed class GetRoomLobbyEndpointTests
         var root = document.RootElement;
 
         Assert.Equal("AB12CD", root.GetProperty("roomCode").GetString());
-        Assert.Equal("Host", root.GetProperty("hostDisplayName").GetString());
         Assert.Equal((int)RoomStatus.WaitingForPlayers, root.GetProperty("status").GetInt32());
+
+        var players = root.GetProperty("players").EnumerateArray().ToArray();
+        Assert.Equal(2, players.Length);
+        Assert.Equal("Host", players[0].GetProperty("displayName").GetString());
+        Assert.True(players[0].GetProperty("isHost").GetBoolean());
     }
 
     [Fact]
     public async Task GetRoomLobbyAsync_WhenRoomCodeIsInvalid_Returns400ProblemDetails()
     {
         // Arrange
-        var handler = new GetRoomLobbyHandler(new FakeRoomLobbyReadRepository());
+        var handler = new GetRoomLobbyHandler(new FakeRoomLobbyQueryService());
 
         // Act
         var result = await InvokeGetRoomLobbyAsync("abc", handler, CancellationToken.None);
@@ -60,7 +67,7 @@ public sealed class GetRoomLobbyEndpointTests
     public async Task GetRoomLobbyAsync_WhenRoomDoesNotExist_Returns404ProblemDetails()
     {
         // Arrange
-        var handler = new GetRoomLobbyHandler(new FakeRoomLobbyReadRepository());
+        var handler = new GetRoomLobbyHandler(new FakeRoomLobbyQueryService());
 
         // Act
         var result = await InvokeGetRoomLobbyAsync("AB12CD", handler, CancellationToken.None);
@@ -81,7 +88,10 @@ public sealed class GetRoomLobbyEndpointTests
     {
         var method = typeof(RoomsEndpoints).GetMethod(
             "GetRoomLobbyAsync",
-            BindingFlags.Static | BindingFlags.NonPublic);
+            BindingFlags.Static | BindingFlags.NonPublic,
+            null,
+            [typeof(string), typeof(GetRoomLobbyHandler), typeof(CancellationToken)],
+            null);
 
         Assert.NotNull(method);
 
@@ -117,7 +127,7 @@ public sealed class GetRoomLobbyEndpointTests
 
     private sealed record HttpExecutionResult(int StatusCode, string Body);
 
-    private sealed class FakeRoomLobbyReadRepository : IRoomLobbyReadRepository
+    private sealed class FakeRoomLobbyQueryService : IRoomLobbyQueryService
     {
         private readonly Dictionary<string, GetRoomLobbyResult> lobbiesByCode = new(StringComparer.Ordinal);
 
@@ -134,4 +144,3 @@ public sealed class GetRoomLobbyEndpointTests
         }
     }
 }
-

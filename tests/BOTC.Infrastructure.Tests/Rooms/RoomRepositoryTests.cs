@@ -14,7 +14,6 @@ public sealed class RoomRepositoryTests : IDisposable
 
     public RoomRepositoryTests()
     {
-        // Keep the connection open for the lifetime of the test so the in-memory SQLite database persists.
         connection = new SqliteConnection("DataSource=:memory:");
         connection.Open();
 
@@ -29,7 +28,7 @@ public sealed class RoomRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task TryAddAsync_WhenRoomCodeIsUnique_ReturnsTrueAndPersistsRoom()
+    public async Task TryAddAsync_WhenRoomCodeIsUnique_ReturnsTrueAndPersistsRoomWithHostPlayer()
     {
         // Arrange
         var room = CreateRoom("AB12CD", "Host");
@@ -39,11 +38,13 @@ public sealed class RoomRepositoryTests : IDisposable
 
         // Assert
         Assert.True(result);
-        var persisted = await dbContext.Rooms.SingleAsync(r => r.Id == room.Id.Value);
+        var persisted = await dbContext.Rooms.Include(r => r.Players).SingleAsync(r => r.Id == room.Id.Value);
         Assert.Equal("AB12CD", persisted.Code);
-        Assert.Equal("Host", persisted.HostDisplayName);
         Assert.Equal((int)RoomStatus.WaitingForPlayers, persisted.Status);
         Assert.Equal(room.CreatedAtUtc, persisted.CreatedAtUtc);
+        Assert.Single(persisted.Players);
+        Assert.Equal("Host", persisted.Players.Single().DisplayName);
+        Assert.Equal((int)RoomPlayerRole.Host, persisted.Players.Single().Role);
     }
 
     [Fact]
@@ -63,113 +64,74 @@ public sealed class RoomRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task TryAddAsync_WhenRoomCodeAlreadyExists_DoesNotPersistDuplicateRoom()
-    {
-        // Arrange
-        var firstRoom = CreateRoom("AB12CD", "First Host");
-        var duplicateCodeRoom = CreateRoom("AB12CD", "Second Host");
-
-        await repository.TryAddAsync(firstRoom, CancellationToken.None);
-
-        // Act
-        await repository.TryAddAsync(duplicateCodeRoom, CancellationToken.None);
-
-        // Assert – only one room with this code exists in the database.
-        var count = await dbContext.Rooms.CountAsync(r => r.Code == "AB12CD");
-        Assert.Equal(1, count);
-    }
-
-    [Fact]
-    public async Task TryAddAsync_WhenMultipleRoomsHaveUniqueCode_PersistsAll()
-    {
-        // Arrange
-        var rooms = new[]
-        {
-            CreateRoom("AA0001", "Host One"),
-            CreateRoom("BB0002", "Host Two"),
-            CreateRoom("CC0003", "Host Three")
-        };
-
-        // Act
-        var results = new bool[rooms.Length];
-        for (var i = 0; i < rooms.Length; i++)
-        {
-            results[i] = await repository.TryAddAsync(rooms[i], CancellationToken.None);
-        }
-
-        // Assert
-        Assert.All(results, r => Assert.True(r));
-        Assert.Equal(3, await dbContext.Rooms.CountAsync());
-    }
-
-    [Fact]
-    public async Task TryAddAsync_WhenCancelled_ThrowsOperationCanceledException()
+    public async Task GetByCodeAsync_WhenRoomExists_ReturnsRoomWithPlayers()
     {
         // Arrange
         var room = CreateRoom("AB12CD", "Host");
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
+        room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
+        await repository.TryAddAsync(room, CancellationToken.None);
 
         // Act
-        var act = async () => await repository.TryAddAsync(room, cts.Token);
+        var result = await repository.GetByCodeAsync(new RoomCode("AB12CD"), CancellationToken.None);
 
         // Assert
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(act);
+        Assert.NotNull(result);
+        Assert.Equal(room.Id, result!.Id);
+        Assert.Equal(2, result.Players.Count);
+        Assert.Contains(result.Players, player => player.DisplayName == "Host" && player.Role == RoomPlayerRole.Host);
+        Assert.Contains(result.Players, player => player.DisplayName == "Alice" && player.Role == RoomPlayerRole.Player);
     }
 
     [Fact]
-    public async Task TryAddAsync_WhenRoomIdAlreadyExists_RethrowsDbUpdateException()
+    public async Task TrySaveAsync_WhenRoomExists_PersistsNewlyJoinedPlayer()
     {
         // Arrange
-        var sharedId = RoomId.New();
-        var firstRoom = CreateRoom(sharedId, "AB12CD", "First Host");
-        var duplicateIdRoom = CreateRoom(sharedId, "EF34GH", "Second Host");
-
-        await repository.TryAddAsync(firstRoom, CancellationToken.None);
-        dbContext.ChangeTracker.Clear();
-
-        // Act
-        var act = async () => await repository.TryAddAsync(duplicateIdRoom, CancellationToken.None);
-
-        // Assert
-        await Assert.ThrowsAsync<DbUpdateException>(act);
-    }
-
-    [Fact]
-    public async Task TryAddAsync_WhenNonUniqueConstraintViolationOccurs_RethrowsDbUpdateException()
-    {
-        // Arrange
-        await dbContext.Database.ExecuteSqlRawAsync(
-            """
-            CREATE TRIGGER Rooms_PreventInsert
-            BEFORE INSERT ON Rooms
-            BEGIN
-                SELECT RAISE(ABORT, 'blocked by test trigger');
-            END;
-            """);
-
         var room = CreateRoom("AB12CD", "Host");
+        await repository.TryAddAsync(room, CancellationToken.None);
+
+        var loaded = await repository.GetByCodeAsync(new RoomCode("AB12CD"), CancellationToken.None);
+        Assert.NotNull(loaded);
+        loaded!.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
 
         // Act
-        var act = async () => await repository.TryAddAsync(room, CancellationToken.None);
+        var saved = await repository.TrySaveAsync(loaded, CancellationToken.None);
 
         // Assert
-        await Assert.ThrowsAsync<DbUpdateException>(act);
+        Assert.True(saved);
+        var persistedPlayers = await dbContext.RoomPlayers
+            .Where(player => player.RoomId == loaded.Id.Value)
+            .ToListAsync();
+        Assert.Equal(2, persistedPlayers.Count);
+        Assert.Contains(persistedPlayers, player => player.DisplayName == "Alice");
+    }
+
+    [Fact]
+    public async Task TrySaveAsync_WhenDuplicateNormalizedDisplayNameConflictOccurs_ReturnsFalse()
+    {
+        // Arrange
+        var room = CreateRoom("AB12CD", "Host");
+        await repository.TryAddAsync(room, CancellationToken.None);
+
+        var first = await repository.GetByCodeAsync(new RoomCode("AB12CD"), CancellationToken.None);
+        var second = await repository.GetByCodeAsync(new RoomCode("AB12CD"), CancellationToken.None);
+        Assert.NotNull(first);
+        Assert.NotNull(second);
+
+        first!.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
+        var firstSave = await repository.TrySaveAsync(first, CancellationToken.None);
+        Assert.True(firstSave);
+
+        second!.JoinPlayer("ALICE", DateTime.UtcNow.AddSeconds(2));
+        var secondSave = await repository.TrySaveAsync(second, CancellationToken.None);
+
+        // Assert
+        Assert.False(secondSave);
     }
 
     private static Room CreateRoom(string code, string hostDisplayName)
     {
         return Room.Create(
             RoomId.New(),
-            new RoomCode(code),
-            hostDisplayName,
-            DateTime.UtcNow);
-    }
-
-    private static Room CreateRoom(RoomId id, string code, string hostDisplayName)
-    {
-        return Room.Create(
-            id,
             new RoomCode(code),
             hostDisplayName,
             DateTime.UtcNow);

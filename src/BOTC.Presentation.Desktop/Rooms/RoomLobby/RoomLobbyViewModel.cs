@@ -1,4 +1,5 @@
-﻿using System.Net.Http;
+﻿using System.Collections.ObjectModel;
+using System.Net.Http;
 using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Desktop.Navigation;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -10,11 +11,10 @@ public partial class RoomLobbyViewModel(
     IRoomsApiClient roomsApiClient,
     INavigationService navigationService) : ObservableObject
 {
-    [ObservableProperty]
-    private string _roomCode = "-";
+    public ObservableCollection<LobbyPlayerItemViewModel> Players { get; } = new();
 
     [ObservableProperty]
-    private string _hostDisplayName = "-";
+    private string _roomCode = "-";
 
     [ObservableProperty]
     private string _roomStatus = "-";
@@ -35,16 +35,20 @@ public partial class RoomLobbyViewModel(
     {
         ErrorMessage = string.Empty;
         RoomCode = string.IsNullOrWhiteSpace(roomCode) ? "-" : roomCode.Trim();
-        HostDisplayName = "-";
         RoomStatus = "-";
+        Players.Clear();
 
         IsBusy = true;
         try
         {
             var response = await roomsApiClient.GetRoomLobbyAsync(roomCode, cancellationToken);
             RoomCode = response.RoomCode;
-            HostDisplayName = response.HostDisplayName;
             RoomStatus = ToDisplayStatus(response.Status);
+
+            foreach (var player in response.Players.OrderByDescending(player => player.IsHost).ThenBy(player => player.DisplayName, StringComparer.Ordinal))
+            {
+                Players.Add(new LobbyPlayerItemViewModel(player.DisplayName, player.IsHost));
+            }
         }
         catch (HttpRequestException)
         {

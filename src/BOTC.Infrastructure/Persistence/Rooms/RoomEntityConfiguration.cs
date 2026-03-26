@@ -9,25 +9,25 @@ internal sealed class RoomEntityConfiguration : IEntityTypeConfiguration<RoomEnt
     {
         builder.ToTable("Rooms");
 
-        builder.HasKey(r => r.Id);
+        builder.HasKey(room => room.Id);
 
-        builder.Property(r => r.Code)
+        builder.Property(room => room.Code)
             .IsRequired()
             .HasMaxLength(6)
             .IsFixedLength();
 
-        builder.Property(r => r.HostDisplayName)
-            .IsRequired()
-            .HasMaxLength(50);
-
-        builder.Property(r => r.Status)
+        builder.Property(room => room.Status)
             .IsRequired();
 
-        builder.Property(r => r.CreatedAtUtc)
+        builder.Property(room => room.CreatedAtUtc)
             .IsRequired();
 
-        builder.HasIndex(r => r.Code)
+        builder.HasIndex(room => room.Code)
             .IsUnique();
+
+        builder.HasMany(room => room.Players)
+            .WithOne(player => player.Room)
+            .HasForeignKey(player => player.RoomId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
-

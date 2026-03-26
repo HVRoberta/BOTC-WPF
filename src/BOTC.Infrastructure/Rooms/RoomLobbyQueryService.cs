@@ -18,6 +18,7 @@ public sealed class RoomLobbyQueryService : IRoomLobbyQueryService
     {
         var entity = await dbContext.Rooms
             .AsNoTracking()
+            .Include(room => room.Players)
             .SingleOrDefaultAsync(room => room.Code == roomCode.Value, cancellationToken);
 
         if (entity is null)
@@ -31,9 +32,30 @@ public sealed class RoomLobbyQueryService : IRoomLobbyQueryService
                 $"Room '{entity.Code}' contains invalid persisted status value '{entity.Status}'.");
         }
 
+        var players = entity.Players
+            .OrderByDescending(player => player.Role == (int)RoomPlayerRole.Host)
+            .ThenBy(player => player.JoinedAtUtc)
+            .ThenBy(player => player.DisplayName, StringComparer.Ordinal)
+            .Select(MapPlayer)
+            .ToArray();
+
         return new GetRoomLobbyResult(
             new RoomCode(entity.Code),
-            entity.HostDisplayName,
+            players,
             (RoomStatus)entity.Status);
+    }
+
+    private static LobbyPlayerResult MapPlayer(Persistence.Rooms.RoomPlayerEntity entity)
+    {
+        if (!Enum.IsDefined(typeof(RoomPlayerRole), entity.Role))
+        {
+            throw new InvalidOperationException(
+                $"Room player '{entity.Id}' contains invalid persisted role value '{entity.Role}'.");
+        }
+
+        return new LobbyPlayerResult(
+            new RoomPlayerId(entity.Id),
+            entity.DisplayName,
+            (RoomPlayerRole)entity.Role);
     }
 }
