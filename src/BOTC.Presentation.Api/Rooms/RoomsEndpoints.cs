@@ -38,6 +38,7 @@ public static class RoomsEndpoints
     private static async Task<IResult> CreateRoomAsync(
         CreateRoomRequest request,
         CreateRoomHandler handler,
+        IRoomLobbyNotifier roomLobbyNotifier,
         CancellationToken cancellationToken)
     {
         if (request is null || string.IsNullOrWhiteSpace(request.HostDisplayName))
@@ -55,6 +56,8 @@ public static class RoomsEndpoints
             var command = CreateRoomMappings.ToCommand(request);
             var result = await handler.HandleAsync(command, cancellationToken);
             var response = CreateRoomMappings.ToResponse(result);
+
+            await roomLobbyNotifier.NotifyLobbyUpdatedAsync(response.RoomCode, CancellationToken.None);
 
             return Results.Created($"/api/rooms/{response.RoomId}", response);
         }
@@ -113,6 +116,7 @@ public static class RoomsEndpoints
         string roomCode,
         JoinRoomRequest request,
         JoinRoomHandler handler,
+        IRoomLobbyNotifier roomLobbyNotifier,
         CancellationToken cancellationToken)
     {
         if (request is null || string.IsNullOrWhiteSpace(request.DisplayName))
@@ -130,6 +134,8 @@ public static class RoomsEndpoints
             var command = JoinRoomMappings.ToCommand(roomCode, request);
             var result = await handler.HandleAsync(command, cancellationToken);
             var response = JoinRoomMappings.ToResponse(result);
+
+            await roomLobbyNotifier.NotifyLobbyUpdatedAsync(response.RoomCode, CancellationToken.None);
 
             return Results.Ok(response);
         }

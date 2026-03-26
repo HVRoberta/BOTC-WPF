@@ -1,4 +1,5 @@
 ﻿using BOTC.Application;
+using BOTC.Contracts.Rooms;
 using BOTC.Infrastructure;
 using BOTC.Infrastructure.Persistence;
 using BOTC.Presentation.Api.Rooms;
@@ -13,6 +14,8 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(connectionString);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IRoomLobbyNotifier, SignalRRoomLobbyNotifier>();
 
 var app = builder.Build();
 
@@ -26,5 +29,6 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.MapRoomsEndpoints();
+app.MapHub<RoomLobbyHub>(RoomLobbyHubContract.HubRoute);
 
 app.Run();

@@ -1,4 +1,4 @@
-﻿﻿using System.Reflection;
+﻿using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using BOTC.Application.Features.Rooms.JoinRoom;
@@ -18,11 +18,13 @@ public sealed class JoinRoomEndpointTests
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
         var repository = new FakeRoomJoinRepository(room);
         var handler = new JoinRoomHandler(repository);
+        var notifier = new FakeRoomLobbyNotifier();
 
-        var result = await InvokeJoinRoomAsync("AB12CD", new JoinRoomRequest("Alice"), handler, CancellationToken.None);
+        var result = await InvokeJoinRoomAsync("AB12CD", new JoinRoomRequest("Alice"), handler, notifier, CancellationToken.None);
         var response = await ExecuteResultAsync(result);
 
         Assert.Equal(StatusCodes.Status200OK, response.StatusCode);
+        Assert.Equal(["AB12CD"], notifier.NotifiedRoomCodes);
 
         using var document = JsonDocument.Parse(response.Body);
         var root = document.RootElement;
@@ -36,22 +38,26 @@ public sealed class JoinRoomEndpointTests
     {
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
         var handler = new JoinRoomHandler(new FakeRoomJoinRepository(room));
+        var notifier = new FakeRoomLobbyNotifier();
 
-        var result = await InvokeJoinRoomAsync("AB12CD", new JoinRoomRequest("  "), handler, CancellationToken.None);
+        var result = await InvokeJoinRoomAsync("AB12CD", new JoinRoomRequest("  "), handler, notifier, CancellationToken.None);
         var response = await ExecuteResultAsync(result);
 
         Assert.Equal(StatusCodes.Status400BadRequest, response.StatusCode);
+        Assert.Empty(notifier.NotifiedRoomCodes);
     }
 
     [Fact]
     public async Task JoinRoomAsync_WhenRoomNotFound_Returns404()
     {
         var handler = new JoinRoomHandler(new FakeRoomJoinRepository());
+        var notifier = new FakeRoomLobbyNotifier();
 
-        var result = await InvokeJoinRoomAsync("AB12CD", new JoinRoomRequest("Alice"), handler, CancellationToken.None);
+        var result = await InvokeJoinRoomAsync("AB12CD", new JoinRoomRequest("Alice"), handler, notifier, CancellationToken.None);
         var response = await ExecuteResultAsync(result);
 
         Assert.Equal(StatusCodes.Status404NotFound, response.StatusCode);
+        Assert.Empty(notifier.NotifiedRoomCodes);
     }
 
     [Fact]
@@ -59,11 +65,13 @@ public sealed class JoinRoomEndpointTests
     {
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
         var handler = new JoinRoomHandler(new FakeRoomJoinRepository(room, trySaveResult: false));
+        var notifier = new FakeRoomLobbyNotifier();
 
-        var result = await InvokeJoinRoomAsync("AB12CD", new JoinRoomRequest("Alice"), handler, CancellationToken.None);
+        var result = await InvokeJoinRoomAsync("AB12CD", new JoinRoomRequest("Alice"), handler, notifier, CancellationToken.None);
         var response = await ExecuteResultAsync(result);
 
         Assert.Equal(StatusCodes.Status409Conflict, response.StatusCode);
+        Assert.Empty(notifier.NotifiedRoomCodes);
     }
 
     [Fact]
@@ -72,29 +80,32 @@ public sealed class JoinRoomEndpointTests
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
         var exceptionToThrow = new RoomJoinSaveRoomMissingException(room.Id);
         var handler = new JoinRoomHandler(new FakeRoomJoinRepository(room, throwOnSave: exceptionToThrow));
+        var notifier = new FakeRoomLobbyNotifier();
 
-        var result = await InvokeJoinRoomAsync("AB12CD", new JoinRoomRequest("Alice"), handler, CancellationToken.None);
+        var result = await InvokeJoinRoomAsync("AB12CD", new JoinRoomRequest("Alice"), handler, notifier, CancellationToken.None);
         var response = await ExecuteResultAsync(result);
 
         Assert.Equal(StatusCodes.Status404NotFound, response.StatusCode);
+        Assert.Empty(notifier.NotifiedRoomCodes);
     }
 
     private static async Task<IResult> InvokeJoinRoomAsync(
         string roomCode,
         JoinRoomRequest request,
         JoinRoomHandler handler,
+        IRoomLobbyNotifier notifier,
         CancellationToken cancellationToken)
     {
         var method = typeof(RoomsEndpoints).GetMethod(
             "JoinRoomAsync",
             BindingFlags.Static | BindingFlags.NonPublic,
             null,
-            [typeof(string), typeof(JoinRoomRequest), typeof(JoinRoomHandler), typeof(CancellationToken)],
+            [typeof(string), typeof(JoinRoomRequest), typeof(JoinRoomHandler), typeof(IRoomLobbyNotifier), typeof(CancellationToken)],
             null);
 
         Assert.NotNull(method);
 
-        var invocationResult = method!.Invoke(null, [roomCode, request, handler, cancellationToken]);
+        var invocationResult = method!.Invoke(null, [roomCode, request, handler, notifier, cancellationToken]);
         Assert.NotNull(invocationResult);
 
         return await (Task<IResult>)invocationResult!;
@@ -155,6 +166,17 @@ public sealed class JoinRoomEndpointTests
             }
 
             return Task.FromResult(_trySaveResult);
+        }
+    }
+
+    private sealed class FakeRoomLobbyNotifier : IRoomLobbyNotifier
+    {
+        public List<string> NotifiedRoomCodes { get; } = [];
+
+        public Task NotifyLobbyUpdatedAsync(string roomCode, CancellationToken cancellationToken)
+        {
+            NotifiedRoomCodes.Add(roomCode);
+            return Task.CompletedTask;
         }
     }
 }

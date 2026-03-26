@@ -36,6 +36,7 @@ public static class DesktopPresentationServiceRegistration
         services.AddTransient<RoomLobbyViewModel>();
 
         services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<IRoomLobbyRealtimeClient>(_ => new RoomLobbyRealtimeClient(roomsApiBaseAddress));
 
         services.AddHttpClient<IRoomsApiClient, RoomsApiClient>(client =>
         {

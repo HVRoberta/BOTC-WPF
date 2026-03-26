@@ -1,4 +1,4 @@
-﻿﻿using System.Reflection;
+﻿using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using BOTC.Application.Abstractions.Persistence;
@@ -21,15 +21,17 @@ public sealed class CreateRoomEndpointTests
         var repository = new FakeRoomRepository();
         var codeGenerator = new FakeRoomCodeGenerator(["AB12CD"]);
         var handler = new CreateRoomHandler(repository, codeGenerator);
+        var notifier = new FakeRoomLobbyNotifier();
         var request = new CreateRoomRequest("Host");
 
         // Act
-        var result = await InvokeCreateRoomAsync(request, handler, CancellationToken.None);
+        var result = await InvokeCreateRoomAsync(request, handler, notifier, CancellationToken.None);
         var response = await ExecuteResultAsync(result);
 
         // Assert
         Assert.Equal(StatusCodes.Status201Created, response.StatusCode);
         Assert.StartsWith("/api/rooms/", response.Location ?? string.Empty, StringComparison.Ordinal);
+        Assert.Equal(["AB12CD"], notifier.NotifiedRoomCodes);
 
         using var document = JsonDocument.Parse(response.Body);
         var root = document.RootElement;
@@ -47,10 +49,11 @@ public sealed class CreateRoomEndpointTests
         var repository = new FakeRoomRepository();
         var codeGenerator = new FakeRoomCodeGenerator(["AB12CD"]);
         var handler = new CreateRoomHandler(repository, codeGenerator);
+        var notifier = new FakeRoomLobbyNotifier();
         var request = new CreateRoomRequest("   ");
 
         // Act
-        var result = await InvokeCreateRoomAsync(request, handler, CancellationToken.None);
+        var result = await InvokeCreateRoomAsync(request, handler, notifier, CancellationToken.None);
         var response = await ExecuteResultAsync(result);
 
         // Assert
@@ -61,6 +64,7 @@ public sealed class CreateRoomEndpointTests
         Assert.Equal("HostDisplayName is required.", root.GetProperty("detail").GetString());
         Assert.Equal(StatusCodes.Status400BadRequest, root.GetProperty("status").GetInt32());
         Assert.Equal(0, repository.TryAddCallCount);
+        Assert.Empty(notifier.NotifiedRoomCodes);
     }
 
     [Fact]
@@ -70,14 +74,16 @@ public sealed class CreateRoomEndpointTests
         var repository = new FakeRoomRepository(alwaysCollide: true);
         var codeGenerator = new FakeRoomCodeGenerator(Enumerable.Repeat("AB12CD", 10));
         var handler = new CreateRoomHandler(repository, codeGenerator);
+        var notifier = new FakeRoomLobbyNotifier();
         var request = new CreateRoomRequest("Host");
 
         // Act
-        var result = await InvokeCreateRoomAsync(request, handler, CancellationToken.None);
+        var result = await InvokeCreateRoomAsync(request, handler, notifier, CancellationToken.None);
         var response = await ExecuteResultAsync(result);
 
         // Assert
         Assert.Equal(StatusCodes.Status503ServiceUnavailable, response.StatusCode);
+        Assert.Empty(notifier.NotifiedRoomCodes);
         using var document = JsonDocument.Parse(response.Body);
         var root = document.RootElement;
         Assert.Equal("Room code generation temporarily unavailable.", root.GetProperty("title").GetString());
@@ -91,10 +97,11 @@ public sealed class CreateRoomEndpointTests
         var repository = new FakeRoomRepository();
         var codeGenerator = new FakeRoomCodeGenerator(["ZX98QP"]);
         var handler = new CreateRoomHandler(repository, codeGenerator);
+        var notifier = new FakeRoomLobbyNotifier();
         var request = new CreateRoomRequest("  Alice  ");
 
         // Act
-        var result = await InvokeCreateRoomAsync(request, handler, CancellationToken.None);
+        var result = await InvokeCreateRoomAsync(request, handler, notifier, CancellationToken.None);
         var response = await ExecuteResultAsync(result);
 
         // Assert
@@ -102,6 +109,7 @@ public sealed class CreateRoomEndpointTests
         Assert.NotNull(repository.LastAddedRoom);
         Assert.Equal("Alice", repository.LastAddedRoom!.HostDisplayName);
         Assert.Equal("ZX98QP", repository.LastAddedRoom.Code.Value);
+        Assert.Equal(["ZX98QP"], notifier.NotifiedRoomCodes);
     }
 
     [Fact]
@@ -111,10 +119,11 @@ public sealed class CreateRoomEndpointTests
         var repository = new FakeRoomRepository();
         var codeGenerator = new FakeRoomCodeGenerator(["abc"]);
         var handler = new CreateRoomHandler(repository, codeGenerator);
+        var notifier = new FakeRoomLobbyNotifier();
         var request = new CreateRoomRequest("Host");
 
         // Act
-        var result = await InvokeCreateRoomAsync(request, handler, CancellationToken.None);
+        var result = await InvokeCreateRoomAsync(request, handler, notifier, CancellationToken.None);
         var response = await ExecuteResultAsync(result);
 
         // Assert
@@ -124,23 +133,25 @@ public sealed class CreateRoomEndpointTests
         Assert.Equal("Invalid create room request.", root.GetProperty("title").GetString());
         Assert.Contains("Room code", root.GetProperty("detail").GetString(), StringComparison.Ordinal);
         Assert.Equal(0, repository.TryAddCallCount);
+        Assert.Empty(notifier.NotifiedRoomCodes);
     }
 
     private static async Task<IResult> InvokeCreateRoomAsync(
         CreateRoomRequest request,
         CreateRoomHandler handler,
+        IRoomLobbyNotifier notifier,
         CancellationToken cancellationToken)
     {
         var method = typeof(RoomsEndpoints).GetMethod(
             "CreateRoomAsync",
             BindingFlags.Static | BindingFlags.NonPublic,
             null,
-            [typeof(CreateRoomRequest), typeof(CreateRoomHandler), typeof(CancellationToken)],
+            [typeof(CreateRoomRequest), typeof(CreateRoomHandler), typeof(IRoomLobbyNotifier), typeof(CancellationToken)],
             null);
 
         Assert.NotNull(method);
 
-        var invocationResult = method!.Invoke(null, [request, handler, cancellationToken]);
+        var invocationResult = method!.Invoke(null, [request, handler, notifier, cancellationToken]);
         Assert.NotNull(invocationResult);
 
         return await (Task<IResult>)invocationResult!;
@@ -220,6 +231,17 @@ public sealed class CreateRoomEndpointTests
             }
 
             return codes.Dequeue();
+        }
+    }
+
+    private sealed class FakeRoomLobbyNotifier : IRoomLobbyNotifier
+    {
+        public List<string> NotifiedRoomCodes { get; } = [];
+
+        public Task NotifyLobbyUpdatedAsync(string roomCode, CancellationToken cancellationToken)
+        {
+            NotifiedRoomCodes.Add(roomCode);
+            return Task.CompletedTask;
         }
     }
 }
