@@ -1,0 +1,25 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <CornerRadius x:Key="CornerRadiusCard">14</CornerRadius>
+    <CornerRadius x:Key="CornerRadiusSection">10</CornerRadius>
+    <CornerRadius x:Key="CornerRadiusBadge">999</CornerRadius>
+
+    <Thickness x:Key="SpacingScreenPadding">24</Thickness>
+    <Thickness x:Key="SpacingSectionPadding">18</Thickness>
+    <Thickness x:Key="SpacingBadgePadding">10,4</Thickness>
+    <Thickness x:Key="SpacingCardMargin">0,0,0,16</Thickness>
+    <Thickness x:Key="SpacingFieldGap">0,0,0,18</Thickness>
+
+    <sys:Double x:Key="SizeInputHeight">38</sys:Double>
+    <sys:Double x:Key="SizeButtonHeight">36</sys:Double>
+    <sys:Double x:Key="SizeButtonMinWidth">136</sys:Double>
+
+    <CornerRadius x:Key="RoomCardCornerRadius">{StaticResource CornerRadiusCard}</CornerRadius>
+    <CornerRadius x:Key="RoomBadgeCornerRadius">{StaticResource CornerRadiusBadge}</CornerRadius>
+    <Thickness x:Key="RoomScreenPadding">{StaticResource SpacingScreenPadding}</Thickness>
+    <Thickness x:Key="RoomSectionPadding">{StaticResource SpacingSectionPadding}</Thickness>
+</ResourceDictionary>
+
+
+

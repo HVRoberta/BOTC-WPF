@@ -1,0 +1,23 @@
+﻿<UserControl x:Class="BOTC.Presentation.Desktop.Rooms.Shared.Controls.SectionCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:BOTC.Presentation.Desktop.Rooms.Shared.Controls"
+             x:Name="Root">
+    <Border Style="{StaticResource SectionCardStyle}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <controls:PageHeader Title="{Binding Title, ElementName=Root}"
+                                 Subtitle="{Binding Subtitle, ElementName=Root}"
+                                 ActionContent="{Binding HeaderActionContent, ElementName=Root}" />
+
+            <ContentPresenter Grid.Row="1"
+                              Margin="0,18,0,0"
+                              Content="{Binding BodyContent, ElementName=Root}" />
+        </Grid>
+    </Border>
+</UserControl>
+

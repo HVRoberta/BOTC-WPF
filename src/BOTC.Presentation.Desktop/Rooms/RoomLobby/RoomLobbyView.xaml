@@ -17,101 +17,49 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Style="{StaticResource RoomScreenCardStyle}">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="16" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="16" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="16" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+        <sharedControls:SectionCard Title="Room lobby"
+                                    Subtitle="Manage the room, monitor live lobby updates, and keep players ready for the next game flow."
+                                    Grid.Row="0">
+            <sharedControls:SectionCard.HeaderActionContent>
+                <Button VerticalAlignment="Top"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Command="{Binding RefreshCommand}"
+                        Content="Refresh now" />
+            </sharedControls:SectionCard.HeaderActionContent>
+            <sharedControls:SectionCard.BodyContent>
+                <StackPanel>
+                    <WrapPanel>
+                        <sharedControls:StatusBadge Text="{Binding RoomCode, StringFormat=Room {0}}" />
+                        <sharedControls:StatusBadge Text="{Binding RoomStatus}" />
+                        <sharedControls:StatusBadge Text="{Binding RealtimeStateText}" />
+                    </WrapPanel>
 
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                    <sharedControls:ErrorBanner Margin="0,10,0,0"
+                                                Message="{Binding ScreenMessage}"
+                                                Kind="{Binding ScreenMessageKind}"
+                                                Show="{Binding HasScreenMessage}" />
 
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Style="{StaticResource RoomScreenTitleTextStyle}"
-                                   Text="Room lobby" />
-                        <TextBlock Style="{StaticResource RoomScreenSubtitleTextStyle}"
-                                   Text="Manage the room, monitor live lobby updates, and keep players ready for the next game flow." />
-                    </StackPanel>
+                    <sharedControls:LoadingPanel Margin="0,12,0,0"
+                                                 Text="{Binding BusyText}"
+                                                 IsBusy="{Binding IsBusy}" />
+                </StackPanel>
+            </sharedControls:SectionCard.BodyContent>
+        </sharedControls:SectionCard>
 
-                    <Button Grid.Column="1"
-                            VerticalAlignment="Top"
-                            Style="{StaticResource RoomSecondaryButtonStyle}"
-                            Command="{Binding RefreshCommand}"
-                            Content="Refresh now" />
-                </Grid>
-
-                <WrapPanel Grid.Row="2">
-                    <Border Style="{StaticResource RoomStatusBadgeBorderStyle}">
-                        <TextBlock Style="{StaticResource RoomStatusBadgeTextStyle}"
-                                   Text="{Binding RoomCode, StringFormat=Room {0}}" />
-                    </Border>
-
-                    <Border Style="{StaticResource RoomStatusBadgeBorderStyle}">
-                        <TextBlock Style="{StaticResource RoomStatusBadgeTextStyle}"
-                                   Text="{Binding RoomStatus}" />
-                    </Border>
-
-                    <Border Style="{StaticResource RoomStatusBadgeBorderStyle}">
-                        <TextBlock Style="{StaticResource RoomStatusBadgeTextStyle}"
-                                   Text="{Binding RealtimeStateText}" />
-                    </Border>
-                </WrapPanel>
-
-                <sharedControls:StateBanner Grid.Row="4"
-                                            Message="{Binding ScreenMessage}"
-                                            Kind="{Binding ScreenMessageKind}"
-                                            Show="{Binding HasScreenMessage}" />
-
-                <sharedControls:BusyIndicator Grid.Row="6"
-                                              Text="{Binding BusyText}"
-                                              IsBusy="{Binding IsBusy}" />
-            </Grid>
-        </Border>
-
-        <Border Grid.Row="2"
-                Style="{StaticResource RoomSectionCardStyle}">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="16" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Style="{StaticResource RoomSectionTitleTextStyle}"
-                                   Text="Players" />
-                        <TextBlock Margin="0,6,0,0"
-                                   Style="{StaticResource RoomMutedTextStyle}"
-                                   Text="{Binding Players.Count, StringFormat=Players currently in lobby: {0}}" />
-                    </StackPanel>
-
-                    <TextBlock Grid.Column="1"
-                               VerticalAlignment="Bottom"
-                               Style="{StaticResource RoomMutedTextStyle}"
-                               Text="Realtime and manual refresh stay in sync." />
-                </Grid>
-
-                <ScrollViewer Grid.Row="2"
-                              VerticalScrollBarVisibility="Auto">
+        <sharedControls:SectionCard Grid.Row="2"
+                                    Title="Players"
+                                    Subtitle="{Binding Players.Count, StringFormat=Players currently in lobby: {0}}">
+            <sharedControls:SectionCard.HeaderActionContent>
+                <TextBlock VerticalAlignment="Bottom"
+                           Style="{StaticResource MutedTextStyle}"
+                           Text="Realtime and manual refresh stay in sync." />
+            </sharedControls:SectionCard.HeaderActionContent>
+            <sharedControls:SectionCard.BodyContent>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <ItemsControl ItemsSource="{Binding Players}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type roomLobby:LobbyPlayerItemViewModel}">
-                                <Border Style="{StaticResource RoomPlayerCardStyle}">
+                                <Border Style="{StaticResource PlayerCardStyle}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -119,10 +67,12 @@
                                         </Grid.ColumnDefinitions>
 
                                         <StackPanel Grid.Column="0">
-                                            <TextBlock FontSize="15"
-                                                       Text="{Binding DisplayName}">
+                                            <TextBlock Text="{Binding DisplayName}">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
+                                                        <Setter Property="FontSize" Value="{StaticResource FontSizeValue}" />
+                                                        <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
+                                                        <Setter Property="TextWrapping" Value="Wrap" />
                                                         <Setter Property="FontWeight" Value="Normal" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsHost}" Value="True">
@@ -134,37 +84,37 @@
                                             </TextBlock>
 
                                             <TextBlock Margin="0,6,0,0"
-                                                       Style="{StaticResource RoomMutedTextStyle}"
+                                                       Style="{StaticResource MutedTextStyle}"
                                                        Text="Room host"
                                                        Visibility="{Binding IsHost, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                         </StackPanel>
 
-                                        <Border Grid.Column="1"
-                                                Margin="12,0,0,0"
-                                                Style="{StaticResource RoomStatusBadgeBorderStyle}"
-                                                Visibility="{Binding IsHost, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                            <TextBlock Style="{StaticResource RoomStatusBadgeTextStyle}"
-                                                       Text="Host" />
-                                        </Border>
+                                        <sharedControls:StatusBadge Grid.Column="1"
+                                                                    Margin="12,0,0,0"
+                                                                    Text="Host"
+                                                                    Visibility="{Binding IsHost, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                     </Grid>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
-            </Grid>
-        </Border>
+            </sharedControls:SectionCard.BodyContent>
+        </sharedControls:SectionCard>
 
-        <StackPanel Grid.Row="4"
-                    Style="{StaticResource RoomActionRowStyle}">
-            <Button Margin="0,0,12,0"
-                    Style="{StaticResource RoomDangerButtonStyle}"
-                    Command="{Binding LeaveRoomCommand}"
-                    Content="Leave room" />
+        <sharedControls:ActionBar Grid.Row="4">
+            <sharedControls:ActionBar.LeadingContent>
+                <StackPanel Orientation="Horizontal">
+                    <Button Margin="0,0,12,0"
+                            Style="{StaticResource DangerButtonStyle}"
+                            Command="{Binding LeaveRoomCommand}"
+                            Content="Leave room" />
 
-            <Button Style="{StaticResource RoomSecondaryButtonStyle}"
-                    Command="{Binding BackToCreateRoomCommand}"
-                    Content="Back to room setup" />
-        </StackPanel>
+                    <Button Style="{StaticResource SecondaryButtonStyle}"
+                            Command="{Binding BackToCreateRoomCommand}"
+                            Content="Back to room setup" />
+                </StackPanel>
+            </sharedControls:ActionBar.LeadingContent>
+        </sharedControls:ActionBar>
     </Grid>
 </UserControl>

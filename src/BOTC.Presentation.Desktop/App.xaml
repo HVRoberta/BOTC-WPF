@@ -4,7 +4,13 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Rooms/Shared/Resources/RoomStyles.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/DesignSystem/Colors.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/DesignSystem/Brushes.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/DesignSystem/Typography.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/DesignSystem/SpacingSizing.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/DesignSystem/TextStyles.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/DesignSystem/ButtonStyles.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/DesignSystem/ContainerStyles.xaml" />
                 <ResourceDictionary Source="Rooms/Shared/Resources/RoomTemplates.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>

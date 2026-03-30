@@ -7,33 +7,41 @@
              mc:Ignorable="d"
              d:DesignHeight="360"
              d:DesignWidth="520">
-    <sharedControls:RoomFormLayout Title="Create room"
-                                   Subtitle="Start a new room and enter the lobby as the host."
-                                   MessageText="{Binding ScreenMessage}"
-                                   MessageKind="{Binding ScreenMessageKind}"
-                                   HasMessage="{Binding HasScreenMessage}"
-                                   BusyText="{Binding BusyText}"
-                                   IsBusy="{Binding IsBusy}">
-        <sharedControls:RoomFormLayout.FormContent>
+    <sharedControls:SectionCard Title="Create room"
+                                Subtitle="Start a new room and enter the lobby as the host.">
+        <sharedControls:SectionCard.BodyContent>
             <StackPanel>
-                <TextBlock Style="{StaticResource RoomFieldLabelTextStyle}"
-                           Text="Host display name" />
-                <TextBox Style="{StaticResource RoomTextBoxStyle}"
-                         Text="{Binding HostDisplayName, UpdateSourceTrigger=PropertyChanged}" />
-            </StackPanel>
-        </sharedControls:RoomFormLayout.FormContent>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                               Text="Host display name" />
+                    <TextBox Style="{StaticResource InputTextBoxStyle}"
+                             Text="{Binding HostDisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
 
-        <sharedControls:RoomFormLayout.ActionContent>
-            <StackPanel Style="{StaticResource RoomActionRowStyle}">
-                <Button Margin="0,0,12,0"
-                        Style="{StaticResource RoomPrimaryButtonStyle}"
-                        Command="{Binding CreateRoomCommand}"
-                        Content="Create room" />
-                <Button Style="{StaticResource RoomSecondaryButtonStyle}"
-                        Command="{Binding NavigateToJoinRoomCommand}"
-                        Content="Join existing room" />
+                <sharedControls:ActionBar Margin="0,24,0,0">
+                    <sharedControls:ActionBar.LeadingContent>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Margin="0,0,12,0"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Command="{Binding CreateRoomCommand}"
+                                    Content="Create room" />
+                            <Button Style="{StaticResource SecondaryButtonStyle}"
+                                    Command="{Binding NavigateToJoinRoomCommand}"
+                                    Content="Join existing room" />
+                        </StackPanel>
+                    </sharedControls:ActionBar.LeadingContent>
+                </sharedControls:ActionBar>
+
+                <sharedControls:ErrorBanner Margin="0,24,0,0"
+                                            Message="{Binding ScreenMessage}"
+                                            Kind="{Binding ScreenMessageKind}"
+                                            Show="{Binding HasScreenMessage}" />
+
+                <sharedControls:LoadingPanel Margin="0,12,0,0"
+                                             Text="{Binding BusyText}"
+                                             IsBusy="{Binding IsBusy}" />
             </StackPanel>
-        </sharedControls:RoomFormLayout.ActionContent>
-    </sharedControls:RoomFormLayout>
+        </sharedControls:SectionCard.BodyContent>
+    </sharedControls:SectionCard>
 </UserControl>
 

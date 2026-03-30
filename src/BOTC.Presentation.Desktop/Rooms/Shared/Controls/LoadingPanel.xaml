@@ -1,0 +1,12 @@
+﻿<UserControl x:Class="BOTC.Presentation.Desktop.Rooms.Shared.Controls.LoadingPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+    <StackPanel Visibility="{Binding IsBusy, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}">
+        <TextBlock Margin="0,0,0,8"
+                   Style="{StaticResource MutedTextStyle}"
+                   Text="{Binding Text, ElementName=Root}" />
+        <ProgressBar Style="{StaticResource BusyProgressBarStyle}" />
+    </StackPanel>
+</UserControl>
+
