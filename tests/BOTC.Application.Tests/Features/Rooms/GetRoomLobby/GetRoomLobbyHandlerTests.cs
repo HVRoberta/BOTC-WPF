@@ -1,4 +1,4 @@
-﻿﻿using BOTC.Application.Features.Rooms.GetRoomLobby;
+﻿using BOTC.Application.Features.Rooms.GetRoomLobby;
 using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Tests.Features.Rooms.GetRoomLobby;

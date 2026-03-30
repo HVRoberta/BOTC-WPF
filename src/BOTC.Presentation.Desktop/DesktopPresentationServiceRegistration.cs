@@ -3,6 +3,7 @@ using BOTC.Presentation.Desktop.Rooms;
 using BOTC.Presentation.Desktop.Rooms.CreateRoom;
 using BOTC.Presentation.Desktop.Rooms.JoinRoom;
 using BOTC.Presentation.Desktop.Rooms.RoomLobby;
+using BOTC.Presentation.Desktop.Session;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -36,6 +37,7 @@ public static class DesktopPresentationServiceRegistration
         services.AddTransient<RoomLobbyViewModel>();
 
         services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<IClientSessionService, ClientSessionService>();
         services.AddSingleton<IRoomLobbyRealtimeClient>(_ => new RoomLobbyRealtimeClient(roomsApiBaseAddress));
 
         services.AddHttpClient<IRoomsApiClient, RoomsApiClient>(client =>
