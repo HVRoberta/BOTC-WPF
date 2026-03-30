@@ -1,0 +1,34 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+        <Setter Property="Height" Value="{StaticResource SizeButtonHeight}" />
+        <Setter Property="MinWidth" Value="{StaticResource SizeButtonMinWidth}" />
+        <Setter Property="Padding" Value="18,0" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Background" Value="{StaticResource BrushAccent}" />
+        <Setter Property="Foreground" Value="{StaticResource BrushAccentForeground}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BrushAccent}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
+    <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+        <Setter Property="Height" Value="{StaticResource SizeButtonHeight}" />
+        <Setter Property="MinWidth" Value="{StaticResource SizeButtonMinWidth}" />
+        <Setter Property="Padding" Value="18,0" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Background" Value="{StaticResource BrushSurface}" />
+        <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BrushBorderStrong}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
+    <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+        <Setter Property="Foreground" Value="{StaticResource BrushErrorForeground}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BrushDangerBorder}" />
+        <Setter Property="Background" Value="{StaticResource BrushDangerSurface}" />
+    </Style>
+</ResourceDictionary>
+
+

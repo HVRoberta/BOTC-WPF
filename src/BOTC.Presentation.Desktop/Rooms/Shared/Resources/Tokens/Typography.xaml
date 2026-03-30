@@ -1,0 +1,13 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <sys:Double x:Key="FontSizePageTitle">28</sys:Double>
+    <sys:Double x:Key="FontSizeSectionTitle">16</sys:Double>
+    <sys:Double x:Key="FontSizeBody">14</sys:Double>
+    <sys:Double x:Key="FontSizeValue">15</sys:Double>
+    <sys:Double x:Key="FontSizeCaption">12</sys:Double>
+</ResourceDictionary>
+
+
+
+

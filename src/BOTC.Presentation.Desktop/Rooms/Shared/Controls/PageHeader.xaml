@@ -1,0 +1,24 @@
+﻿<UserControl x:Class="BOTC.Presentation.Desktop.Rooms.Shared.Controls.PageHeader"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel>
+            <TextBlock Style="{StaticResource PageTitleTextStyle}"
+                       Text="{Binding Title, ElementName=Root}" />
+            <TextBlock Style="{StaticResource PageSubtitleTextStyle}"
+                       Text="{Binding Subtitle, ElementName=Root}" />
+        </StackPanel>
+
+        <ContentPresenter Grid.Column="1"
+                          VerticalAlignment="Top"
+                          Margin="16,0,0,0"
+                          Content="{Binding ActionContent, ElementName=Root}" />
+    </Grid>
+</UserControl>
+

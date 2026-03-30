@@ -3,30 +3,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:createRoom="clr-namespace:BOTC.Presentation.Desktop.Rooms.CreateRoom"
-        xmlns:joinRoom="clr-namespace:BOTC.Presentation.Desktop.Rooms.JoinRoom"
-        xmlns:roomLobby="clr-namespace:BOTC.Presentation.Desktop.Rooms.RoomLobby"
         mc:Ignorable="d"
         Title="Blood on the Clocktower"
-        Width="520"
-        Height="360"
-        MinWidth="420"
-        MinHeight="280">
-    <Window.Resources>
-        <DataTemplate DataType="{x:Type createRoom:CreateRoomViewModel}">
-            <createRoom:CreateRoomView />
-        </DataTemplate>
+        Width="760"
+        Height="540"
+        MinWidth="640"
+        MinHeight="440"
+        Background="{StaticResource BrushCanvasBackground}">
 
-        <DataTemplate DataType="{x:Type joinRoom:JoinRoomViewModel}">
-            <joinRoom:JoinRoomView />
-        </DataTemplate>
-
-        <DataTemplate DataType="{x:Type roomLobby:RoomLobbyViewModel}">
-            <roomLobby:RoomLobbyView />
-        </DataTemplate>
-    </Window.Resources>
-
-    <Grid Margin="16">
+    <Grid Margin="{StaticResource SpacingScreenPadding}">
         <ContentControl Content="{Binding CurrentViewModel}" />
     </Grid>
 </Window>

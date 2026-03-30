@@ -1,6 +1,7 @@
 ﻿using System.Net.Http;
 using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Desktop.Navigation;
+using BOTC.Presentation.Desktop.Rooms.Shared;
 using BOTC.Presentation.Desktop.Session;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -17,22 +18,36 @@ public partial class CreateRoomViewModel(
     private string _hostDisplayName = string.Empty;
 
     [ObservableProperty]
-    private string _errorMessage = string.Empty;
+    [NotifyPropertyChangedFor(nameof(ErrorMessage))]
+    [NotifyPropertyChangedFor(nameof(HasScreenMessage))]
+    private string _screenMessage = string.Empty;
+
+    [ObservableProperty]
+    private ScreenMessageKind _screenMessageKind = ScreenMessageKind.None;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CreateRoomCommand))]
+    [NotifyCanExecuteChangedFor(nameof(NavigateToJoinRoomCommand))]
     private bool _isBusy;
 
+    public string ErrorMessage => ScreenMessage;
+
+    public bool HasScreenMessage => !string.IsNullOrWhiteSpace(ScreenMessage);
+
+    public string BusyText => "Creating room...";
+
     private bool CanCreateRoom() => !IsBusy && !string.IsNullOrWhiteSpace(HostDisplayName);
+
+    private bool CanNavigateToJoinRoom() => !IsBusy;
 
     [RelayCommand(CanExecute = nameof(CanCreateRoom), AllowConcurrentExecutions = false)]
     private async Task CreateRoomAsync()
     {
-        ErrorMessage = string.Empty;
+        ClearScreenMessage();
 
         if (string.IsNullOrWhiteSpace(HostDisplayName))
         {
-            ErrorMessage = "Host display name is required.";
+            ShowErrorMessage("Host display name is required.");
             return;
         }
 
@@ -46,11 +61,11 @@ public partial class CreateRoomViewModel(
         }
         catch (HttpRequestException)
         {
-            ErrorMessage = "Unable to contact the server. Please try again.";
+            ShowErrorMessage("Unable to contact the server. Please try again.");
         }
         catch (Exception)
         {
-            ErrorMessage = "Unexpected error occurred while creating room.";
+            ShowErrorMessage("Unexpected error occurred while creating room.");
         }
         finally
         {
@@ -58,9 +73,21 @@ public partial class CreateRoomViewModel(
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanNavigateToJoinRoom))]
     private void NavigateToJoinRoom()
     {
         navigationService.NavigateToJoinRoom();
+    }
+
+    private void ClearScreenMessage()
+    {
+        ScreenMessage = string.Empty;
+        ScreenMessageKind = ScreenMessageKind.None;
+    }
+
+    private void ShowErrorMessage(string message)
+    {
+        ScreenMessage = message;
+        ScreenMessageKind = ScreenMessageKind.Error;
     }
 }

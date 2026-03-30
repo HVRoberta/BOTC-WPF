@@ -2,6 +2,7 @@
 using System.Net.Http;
 using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Desktop.Navigation;
+using BOTC.Presentation.Desktop.Rooms.Shared;
 using BOTC.Presentation.Desktop.Session;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -22,31 +23,45 @@ public partial class JoinRoomViewModel(
     private string _displayName = string.Empty;
 
     [ObservableProperty]
-    private string _errorMessage = string.Empty;
+    [NotifyPropertyChangedFor(nameof(ErrorMessage))]
+    [NotifyPropertyChangedFor(nameof(HasScreenMessage))]
+    private string _screenMessage = string.Empty;
+
+    [ObservableProperty]
+    private ScreenMessageKind _screenMessageKind = ScreenMessageKind.None;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(JoinRoomCommand))]
+    [NotifyCanExecuteChangedFor(nameof(BackToCreateRoomCommand))]
     private bool _isBusy;
+
+    public string ErrorMessage => ScreenMessage;
+
+    public bool HasScreenMessage => !string.IsNullOrWhiteSpace(ScreenMessage);
+
+    public string BusyText => "Joining room...";
 
     private bool CanJoinRoom() =>
         !IsBusy
         && !string.IsNullOrWhiteSpace(RoomCode)
         && !string.IsNullOrWhiteSpace(DisplayName);
 
+    private bool CanBackToCreateRoom() => !IsBusy;
+
     [RelayCommand(CanExecute = nameof(CanJoinRoom), AllowConcurrentExecutions = false)]
     private async Task JoinRoomAsync()
     {
-        ErrorMessage = string.Empty;
+        ClearScreenMessage();
 
         if (string.IsNullOrWhiteSpace(RoomCode))
         {
-            ErrorMessage = "Room code is required.";
+            ShowErrorMessage("Room code is required.");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(DisplayName))
         {
-            ErrorMessage = "Display name is required.";
+            ShowErrorMessage("Display name is required.");
             return;
         }
 
@@ -60,23 +75,23 @@ public partial class JoinRoomViewModel(
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.BadRequest)
         {
-            ErrorMessage = "Enter a valid room code and display name.";
+            ShowErrorMessage("Enter a valid room code and display name.");
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
         {
-            ErrorMessage = "Room was not found.";
+            ShowErrorMessage("Room was not found.");
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.Conflict)
         {
-            ErrorMessage = "Unable to join room due to a conflict. Please try again.";
+            ShowErrorMessage("Unable to join room due to a conflict. Please try again.");
         }
         catch (HttpRequestException)
         {
-            ErrorMessage = "Unable to contact the server. Please try again.";
+            ShowErrorMessage("Unable to contact the server. Please try again.");
         }
         catch (Exception)
         {
-            ErrorMessage = "Unexpected error occurred while joining room.";
+            ShowErrorMessage("Unexpected error occurred while joining room.");
         }
         finally
         {
@@ -84,9 +99,21 @@ public partial class JoinRoomViewModel(
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanBackToCreateRoom))]
     private void BackToCreateRoom()
     {
         navigationService.NavigateToCreateRoom();
+    }
+
+    private void ClearScreenMessage()
+    {
+        ScreenMessage = string.Empty;
+        ScreenMessageKind = ScreenMessageKind.None;
+    }
+
+    private void ShowErrorMessage(string message)
+    {
+        ScreenMessage = message;
+        ScreenMessageKind = ScreenMessageKind.Error;
     }
 }
