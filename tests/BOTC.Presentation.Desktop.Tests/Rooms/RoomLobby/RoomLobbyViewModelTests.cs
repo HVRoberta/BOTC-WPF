@@ -33,7 +33,7 @@ public sealed class RoomLobbyViewModelTests
         Assert.Equal("Alice", viewModel.Players[1].DisplayName);
         Assert.Equal("AB12CD", realtimeClient.SubscribedRoomCodes.Single());
         Assert.True(viewModel.HasRealtimeSubscription);
-        Assert.Equal("Realtime updates active", viewModel.RealtimeStateText);
+        Assert.Equal("Connected", viewModel.RealtimeStateText);
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public sealed class RoomLobbyViewModelTests
 
         Assert.Single(viewModel.Players);
         Assert.Equal("Host", viewModel.Players[0].DisplayName);
-        Assert.Equal("Room was not found. Showing the last loaded data.", viewModel.ErrorMessage);
+        Assert.Equal("Refresh failed because the room was not found. Showing the last loaded lobby snapshot.", viewModel.ErrorMessage);
         Assert.Equal(ScreenMessageKind.Error, viewModel.ScreenMessageKind);
         Assert.True(viewModel.HasScreenMessage);
     }
@@ -116,7 +116,7 @@ public sealed class RoomLobbyViewModelTests
         Assert.Equal("AB12CD", apiClient.LastLeaveRoomCode);
         Assert.Equal(playerId, apiClient.LastLeaveRequest!.PlayerId);
         Assert.Equal(1, navigationService.NavigateToCreateRoomCallCount);
-        Assert.Equal("You left the room.", viewModel.ErrorMessage);
+        Assert.Equal("You left room AB12CD successfully.", viewModel.ErrorMessage);
         Assert.Equal(ScreenMessageKind.Info, viewModel.ScreenMessageKind);
         Assert.False(sessionService.HasActiveSession);
         Assert.Empty(viewModel.Players);
@@ -141,7 +141,7 @@ public sealed class RoomLobbyViewModelTests
         await realtimeClient.RaiseLobbyClosedAsync("AB12CD");
 
         Assert.Equal(1, navigationService.NavigateToCreateRoomCallCount);
-        Assert.Equal("The room was closed.", viewModel.ErrorMessage);
+        Assert.Equal("The room AB12CD was closed by the host. Returned to room setup.", viewModel.ErrorMessage);
         Assert.Equal(ScreenMessageKind.Info, viewModel.ScreenMessageKind);
         Assert.Empty(viewModel.Players);
         Assert.Equal(["AB12CD"], realtimeClient.UnsubscribedRoomCodes);
@@ -226,13 +226,18 @@ public sealed class RoomLobbyViewModelTests
     {
         public event Func<string, Task>? LobbyUpdated;
         public event Func<string, Task>? LobbyClosed;
+        public event Action<RealtimeConnectionState>? ConnectionStateChanged;
 
         public List<string> SubscribedRoomCodes { get; } = [];
         public List<string> UnsubscribedRoomCodes { get; } = [];
 
+        public RealtimeConnectionState ConnectionState { get; private set; } = RealtimeConnectionState.Disconnected;
+
         public Task SubscribeAsync(string roomCode, CancellationToken cancellationToken)
         {
             SubscribedRoomCodes.Add(roomCode);
+            ConnectionState = RealtimeConnectionState.Connected;
+            ConnectionStateChanged?.Invoke(ConnectionState);
             return Task.CompletedTask;
         }
 
@@ -242,6 +247,9 @@ public sealed class RoomLobbyViewModelTests
             {
                 UnsubscribedRoomCodes.Add(roomCode);
             }
+
+            ConnectionState = RealtimeConnectionState.Disconnected;
+            ConnectionStateChanged?.Invoke(ConnectionState);
 
             return Task.CompletedTask;
         }
