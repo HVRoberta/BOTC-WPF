@@ -8,6 +8,7 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
     private readonly HubConnection _hubConnection;
     private string? _subscribedRoomCode;
     private bool _isDisposed;
+    private RealtimeConnectionState _connectionState = RealtimeConnectionState.Disconnected;
 
     public RoomLobbyRealtimeClient(Uri roomsApiBaseAddress)
     {
@@ -21,12 +22,18 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
 
         _hubConnection.On<string>(RoomLobbyHubContract.LobbyUpdatedEvent, OnLobbyUpdatedAsync);
         _hubConnection.On<string>(RoomLobbyHubContract.LobbyClosedEvent, OnLobbyClosedAsync);
+        _hubConnection.Reconnecting += OnReconnectingAsync;
         _hubConnection.Reconnected += OnReconnectedAsync;
+        _hubConnection.Closed += OnClosedAsync;
     }
 
     public event Func<string, Task>? LobbyUpdated;
 
     public event Func<string, Task>? LobbyClosed;
+
+    public event Action<RealtimeConnectionState>? ConnectionStateChanged;
+
+    public RealtimeConnectionState ConnectionState => _connectionState;
 
     public async Task SubscribeAsync(string roomCode, CancellationToken cancellationToken)
     {
@@ -50,6 +57,7 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
         }
 
         await _hubConnection.InvokeAsync(RoomLobbyHubContract.JoinLobbyGroupMethod, normalizedRoomCode, cancellationToken);
+        SetConnectionState(RealtimeConnectionState.Connected);
     }
 
     public async Task UnsubscribeAsync(string roomCode, CancellationToken cancellationToken)
@@ -71,6 +79,8 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
         {
             await _hubConnection.StopAsync(cancellationToken);
         }
+
+        SetConnectionState(RealtimeConnectionState.Disconnected);
     }
 
     public void Dispose()
@@ -87,7 +97,10 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
 
         _isDisposed = true;
         _subscribedRoomCode = null;
+        _hubConnection.Reconnecting -= OnReconnectingAsync;
         _hubConnection.Reconnected -= OnReconnectedAsync;
+        _hubConnection.Closed -= OnClosedAsync;
+        SetConnectionState(RealtimeConnectionState.Disconnected);
         await _hubConnection.DisposeAsync();
     }
 
@@ -98,7 +111,18 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
             return;
         }
 
-        await _hubConnection.StartAsync(cancellationToken);
+        SetConnectionState(RealtimeConnectionState.Connecting);
+
+        try
+        {
+            await _hubConnection.StartAsync(cancellationToken);
+            SetConnectionState(RealtimeConnectionState.Connected);
+        }
+        catch
+        {
+            SetConnectionState(RealtimeConnectionState.Disconnected);
+            throw;
+        }
     }
 
     private async Task OnLobbyUpdatedAsync(string roomCode)
@@ -111,8 +135,16 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
         await RaiseAsync(LobbyClosed, roomCode);
     }
 
+    private Task OnReconnectingAsync(Exception? _)
+    {
+        SetConnectionState(RealtimeConnectionState.Reconnecting);
+        return Task.CompletedTask;
+    }
+
     private async Task OnReconnectedAsync(string? _)
     {
+        SetConnectionState(RealtimeConnectionState.Connected);
+
         if (string.IsNullOrWhiteSpace(_subscribedRoomCode))
         {
             return;
@@ -120,6 +152,12 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
 
         await _hubConnection.InvokeAsync(RoomLobbyHubContract.JoinLobbyGroupMethod, _subscribedRoomCode);
         await OnLobbyUpdatedAsync(_subscribedRoomCode);
+    }
+
+    private Task OnClosedAsync(Exception? _)
+    {
+        SetConnectionState(RealtimeConnectionState.Disconnected);
+        return Task.CompletedTask;
     }
 
     private static async Task RaiseAsync(Func<string, Task>? handler, string roomCode)
@@ -139,6 +177,17 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
     private void ThrowIfDisposed()
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
+    }
+
+    private void SetConnectionState(RealtimeConnectionState state)
+    {
+        if (_connectionState == state)
+        {
+            return;
+        }
+
+        _connectionState = state;
+        ConnectionStateChanged?.Invoke(state);
     }
 
     private static string NormalizeRoomCode(string roomCode)
