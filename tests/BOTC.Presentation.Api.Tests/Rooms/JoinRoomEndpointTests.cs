@@ -5,6 +5,7 @@ using BOTC.Application.Features.Rooms.JoinRoom;
 using BOTC.Contracts.Rooms;
 using BOTC.Domain.Rooms;
 using BOTC.Presentation.Api.Rooms;
+using BOTC.Presentation.Api.Rooms.Realtime;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -96,7 +97,7 @@ public sealed class JoinRoomEndpointTests
         IRoomLobbyNotifier notifier,
         CancellationToken cancellationToken)
     {
-        var method = typeof(RoomsEndpoints).GetMethod(
+        var method = typeof(JoinRoomEndpoints).GetMethod(
             "JoinRoomAsync",
             BindingFlags.Static | BindingFlags.NonPublic,
             null,

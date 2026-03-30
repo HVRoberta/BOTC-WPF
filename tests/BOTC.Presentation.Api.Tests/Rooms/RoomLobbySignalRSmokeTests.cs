@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 using BOTC.Contracts.Rooms;
-using BOTC.Presentation.Api.Rooms;
+using BOTC.Presentation.Api.Rooms.Realtime;
 
 namespace BOTC.Presentation.Api.Tests.Rooms;
 
@@ -19,7 +19,7 @@ public sealed class RoomLobbySignalRSmokeTests
     [Fact]
     public void RoomLobbyGroups_ForRoom_NormalizesRoomCodeAndUsesExpectedPrefix()
     {
-        var roomLobbyGroupsType = typeof(RoomLobbyHub).Assembly.GetType("BOTC.Presentation.Api.Rooms.RoomLobbyGroups", throwOnError: true)!;
+        var roomLobbyGroupsType = typeof(RoomLobbyHub).Assembly.GetType("BOTC.Presentation.Api.Rooms.Realtime.RoomLobbyGroups", throwOnError: true)!;
         var forRoomMethod = roomLobbyGroupsType.GetMethod("ForRoom", BindingFlags.Public | BindingFlags.Static);
         Assert.NotNull(forRoomMethod);
 
@@ -31,7 +31,7 @@ public sealed class RoomLobbySignalRSmokeTests
     [Fact]
     public void RoomLobbyGroups_ForRoom_WhenRoomCodeIsWhitespace_ThrowsArgumentException()
     {
-        var roomLobbyGroupsType = typeof(RoomLobbyHub).Assembly.GetType("BOTC.Presentation.Api.Rooms.RoomLobbyGroups", throwOnError: true)!;
+        var roomLobbyGroupsType = typeof(RoomLobbyHub).Assembly.GetType("BOTC.Presentation.Api.Rooms.Realtime.RoomLobbyGroups", throwOnError: true)!;
         var forRoomMethod = roomLobbyGroupsType.GetMethod("ForRoom", BindingFlags.Public | BindingFlags.Static);
         Assert.NotNull(forRoomMethod);
 
@@ -56,4 +56,3 @@ public sealed class RoomLobbySignalRSmokeTests
         throw new InvalidOperationException("Could not locate repository root containing BOTC.slnx.");
     }
 }
-
