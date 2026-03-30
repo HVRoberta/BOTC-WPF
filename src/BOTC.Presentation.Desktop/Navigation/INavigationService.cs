@@ -6,5 +6,5 @@ public interface INavigationService
 
     void NavigateToJoinRoom();
 
-    Task NavigateToRoomLobbyAsync(CancellationToken cancellationToken);
+    void NavigateToRoomLobby();
 }

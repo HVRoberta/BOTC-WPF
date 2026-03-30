@@ -57,7 +57,7 @@ public partial class CreateRoomViewModel(
             var request = new CreateRoomRequest(HostDisplayName.Trim());
             var response = await roomsApiClient.CreateRoomAsync(request, CancellationToken.None);
             clientSessionService.SetSession(response.RoomCode, response.PlayerId, request.HostDisplayName);
-            await navigationService.NavigateToRoomLobbyAsync(CancellationToken.None);
+            navigationService.NavigateToRoomLobby();
         }
         catch (HttpRequestException)
         {

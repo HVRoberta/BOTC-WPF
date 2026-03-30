@@ -301,9 +301,8 @@ public sealed class RoomLobbyViewModelTests
         {
         }
 
-        public Task NavigateToRoomLobbyAsync(CancellationToken cancellationToken)
+        public void NavigateToRoomLobby()
         {
-            return Task.CompletedTask;
         }
     }
 

@@ -71,7 +71,7 @@ public partial class JoinRoomViewModel(
             var request = new JoinRoomRequest(DisplayName.Trim());
             var response = await roomsApiClient.JoinRoomAsync(RoomCode.Trim(), request, CancellationToken.None);
             clientSessionService.SetSession(response.RoomCode, response.PlayerId, response.DisplayName);
-            await navigationService.NavigateToRoomLobbyAsync(CancellationToken.None);
+            navigationService.NavigateToRoomLobby();
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.BadRequest)
         {
