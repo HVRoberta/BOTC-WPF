@@ -3,6 +3,7 @@ using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Desktop.Navigation;
 using BOTC.Presentation.Desktop.Rooms;
 using BOTC.Presentation.Desktop.Rooms.RoomLobby;
+using BOTC.Presentation.Desktop.Session;
 
 namespace BOTC.Presentation.Desktop.Tests.Rooms.RoomLobby;
 
@@ -17,9 +18,12 @@ public sealed class RoomLobbyViewModelTests
         ]);
         var realtimeClient = new FakeRoomLobbyRealtimeClient();
         var navigationService = new FakeNavigationService();
-        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService);
+        var playerId = Guid.NewGuid().ToString();
+        var sessionService = new FakeClientSessionService();
+        sessionService.SetSession("AB12CD", playerId, "Host");
+        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
 
-        await viewModel.LoadAsync("AB12CD", Guid.NewGuid().ToString(), CancellationToken.None);
+        await viewModel.LoadAsync(CancellationToken.None);
         await viewModel.ActivateAsync(CancellationToken.None);
         await realtimeClient.RaiseLobbyUpdatedAsync("AB12CD");
 
@@ -41,9 +45,12 @@ public sealed class RoomLobbyViewModelTests
         ]);
         var realtimeClient = new FakeRoomLobbyRealtimeClient();
         var navigationService = new FakeNavigationService();
-        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService);
+        var playerId = Guid.NewGuid().ToString();
+        var sessionService = new FakeClientSessionService();
+        sessionService.SetSession("AB12CD", playerId, "Host");
+        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
 
-        await viewModel.LoadAsync("AB12CD", Guid.NewGuid().ToString(), CancellationToken.None);
+        await viewModel.LoadAsync(CancellationToken.None);
         await viewModel.ActivateAsync(CancellationToken.None);
 
         var firstUpdateTask = realtimeClient.RaiseLobbyUpdatedAsync("AB12CD");
@@ -70,9 +77,12 @@ public sealed class RoomLobbyViewModelTests
         ]);
         var realtimeClient = new FakeRoomLobbyRealtimeClient();
         var navigationService = new FakeNavigationService();
-        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService);
+        var playerId = Guid.NewGuid().ToString();
+        var sessionService = new FakeClientSessionService();
+        sessionService.SetSession("AB12CD", playerId, "Host");
+        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
 
-        await viewModel.LoadAsync("AB12CD", Guid.NewGuid().ToString(), CancellationToken.None);
+        await viewModel.LoadAsync(CancellationToken.None);
         await viewModel.ActivateAsync(CancellationToken.None);
         await realtimeClient.RaiseLobbyUpdatedAsync("AB12CD");
 
@@ -90,9 +100,11 @@ public sealed class RoomLobbyViewModelTests
             leaveRoomResponse: new LeaveRoomResponse("AB12CD", playerId, false, null));
         var realtimeClient = new FakeRoomLobbyRealtimeClient();
         var navigationService = new FakeNavigationService();
-        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService);
+        var sessionService = new FakeClientSessionService();
+        sessionService.SetSession("AB12CD", playerId, "Alice");
+        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
 
-        await viewModel.LoadAsync("AB12CD", playerId, CancellationToken.None);
+        await viewModel.LoadAsync(CancellationToken.None);
         await viewModel.ActivateAsync(CancellationToken.None);
         await viewModel.LeaveRoomCommand.ExecuteAsync(null);
 
@@ -100,6 +112,7 @@ public sealed class RoomLobbyViewModelTests
         Assert.Equal(playerId, apiClient.LastLeaveRequest!.PlayerId);
         Assert.Equal(1, navigationService.NavigateToCreateRoomCallCount);
         Assert.Equal("You left the room.", viewModel.ErrorMessage);
+        Assert.False(sessionService.HasActiveSession);
         Assert.Empty(viewModel.Players);
         Assert.Equal(["AB12CD"], realtimeClient.UnsubscribedRoomCodes);
     }
@@ -112,9 +125,12 @@ public sealed class RoomLobbyViewModelTests
         ]);
         var realtimeClient = new FakeRoomLobbyRealtimeClient();
         var navigationService = new FakeNavigationService();
-        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService);
+        var playerId = Guid.NewGuid().ToString();
+        var sessionService = new FakeClientSessionService();
+        sessionService.SetSession("AB12CD", playerId, "Host");
+        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
 
-        await viewModel.LoadAsync("AB12CD", Guid.NewGuid().ToString(), CancellationToken.None);
+        await viewModel.LoadAsync(CancellationToken.None);
         await viewModel.ActivateAsync(CancellationToken.None);
         await realtimeClient.RaiseLobbyClosedAsync("AB12CD");
 
@@ -127,9 +143,10 @@ public sealed class RoomLobbyViewModelTests
     private static RoomLobbyViewModel CreateViewModel(
         FakeRoomsApiClient apiClient,
         FakeRoomLobbyRealtimeClient realtimeClient,
-        FakeNavigationService navigationService)
+        FakeNavigationService navigationService,
+        IClientSessionService clientSessionService)
     {
-        return new RoomLobbyViewModel(apiClient, realtimeClient, navigationService);
+        return new RoomLobbyViewModel(apiClient, realtimeClient, clientSessionService, navigationService);
     }
 
     private static GetRoomLobbyResponse CreateLobbyResponse(string roomCode, IReadOnlyList<string> players)
@@ -269,9 +286,36 @@ public sealed class RoomLobbyViewModelTests
         {
         }
 
-        public Task NavigateToRoomLobbyAsync(string roomCode, string playerId, CancellationToken cancellationToken)
+        public Task NavigateToRoomLobbyAsync(CancellationToken cancellationToken)
         {
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeClientSessionService : IClientSessionService
+    {
+        public string? CurrentRoomCode { get; private set; }
+
+        public string? CurrentPlayerId { get; private set; }
+
+        public string? DisplayName { get; private set; }
+
+        public bool HasActiveSession =>
+            !string.IsNullOrWhiteSpace(CurrentRoomCode)
+            && !string.IsNullOrWhiteSpace(CurrentPlayerId);
+
+        public void SetSession(string roomCode, string playerId, string displayName)
+        {
+            CurrentRoomCode = roomCode;
+            CurrentPlayerId = playerId;
+            DisplayName = displayName;
+        }
+
+        public void ClearSession()
+        {
+            CurrentRoomCode = null;
+            CurrentPlayerId = null;
+            DisplayName = null;
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿﻿using BOTC.Application.Features.Rooms.CreateRoom;
+﻿using BOTC.Application.Features.Rooms.CreateRoom;
 using BOTC.Contracts.Rooms;
 
 namespace BOTC.Presentation.Api.Rooms;

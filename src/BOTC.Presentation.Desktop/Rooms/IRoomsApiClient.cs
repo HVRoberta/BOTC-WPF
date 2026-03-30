@@ -1,4 +1,4 @@
-﻿﻿using BOTC.Contracts.Rooms;
+﻿using BOTC.Contracts.Rooms;
 
 namespace BOTC.Presentation.Desktop.Rooms;
 

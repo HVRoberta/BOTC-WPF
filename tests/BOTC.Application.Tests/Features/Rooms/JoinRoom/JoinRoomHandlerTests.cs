@@ -1,4 +1,4 @@
-﻿﻿using BOTC.Application.Features.Rooms.JoinRoom;
+﻿using BOTC.Application.Features.Rooms.JoinRoom;
 using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Tests.Features.Rooms.JoinRoom;

@@ -2,6 +2,7 @@
 using System.Net.Http;
 using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Desktop.Navigation;
+using BOTC.Presentation.Desktop.Session;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -9,6 +10,7 @@ namespace BOTC.Presentation.Desktop.Rooms.JoinRoom;
 
 public partial class JoinRoomViewModel(
     IRoomsApiClient roomsApiClient,
+    IClientSessionService clientSessionService,
     INavigationService navigationService) : ObservableObject
 {
     [ObservableProperty]
@@ -53,7 +55,8 @@ public partial class JoinRoomViewModel(
         {
             var request = new JoinRoomRequest(DisplayName.Trim());
             var response = await roomsApiClient.JoinRoomAsync(RoomCode.Trim(), request, CancellationToken.None);
-            await navigationService.NavigateToRoomLobbyAsync(response.RoomCode, response.PlayerId, CancellationToken.None);
+            clientSessionService.SetSession(response.RoomCode, response.PlayerId, response.DisplayName);
+            await navigationService.NavigateToRoomLobbyAsync(CancellationToken.None);
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.BadRequest)
         {

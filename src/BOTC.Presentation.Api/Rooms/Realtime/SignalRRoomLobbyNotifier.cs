@@ -1,4 +1,4 @@
-﻿﻿using BOTC.Contracts.Rooms;
+﻿using BOTC.Contracts.Rooms;
 using Microsoft.AspNetCore.SignalR;
 
 namespace BOTC.Presentation.Api.Rooms.Realtime;

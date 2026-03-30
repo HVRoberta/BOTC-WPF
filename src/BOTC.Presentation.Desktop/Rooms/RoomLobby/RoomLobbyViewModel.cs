@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http;
 using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Desktop.Navigation;
+using BOTC.Presentation.Desktop.Session;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -11,6 +12,7 @@ namespace BOTC.Presentation.Desktop.Rooms.RoomLobby;
 public partial class RoomLobbyViewModel(
     IRoomsApiClient roomsApiClient,
     IRoomLobbyRealtimeClient roomLobbyRealtimeClient,
+    IClientSessionService clientSessionService,
     INavigationService navigationService) : ObservableObject
 {
     private const string UnknownValue = "-";
@@ -52,22 +54,20 @@ public partial class RoomLobbyViewModel(
     private bool _isLeaving;
 
     [RelayCommand]
-    private void BackToCreateRoom()
+    private async Task BackToCreateRoomAsync()
     {
+        await ExitLobbyAsync(CancellationToken.None);
         navigationService.NavigateToCreateRoom();
     }
 
-    public async Task LoadAsync(string roomCode, string playerId, CancellationToken cancellationToken)
+    public async Task LoadAsync(CancellationToken cancellationToken)
     {
-        _currentRoomCode = NormalizeRoomCode(roomCode);
-        _currentPlayerId = NormalizePlayerId(playerId);
-        RefreshCommand.NotifyCanExecuteChanged();
-        LeaveRoomCommand.NotifyCanExecuteChanged();
-
-        if (string.IsNullOrWhiteSpace(_currentRoomCode) || string.IsNullOrWhiteSpace(_currentPlayerId))
+        if (!TrySetSessionContext())
         {
-            await StopRealtimeUpdatesAsync(CancellationToken.None);
-            ResetLobbyState("Enter a valid room and player to load the lobby.");
+            clientSessionService.ClearSession();
+            await ExitLobbyAsync(CancellationToken.None);
+            ResetLobbyState("Session is invalid. Join or create a room again.");
+            navigationService.NavigateToCreateRoom();
             return;
         }
 
@@ -80,6 +80,14 @@ public partial class RoomLobbyViewModel(
     {
         _isLobbyActive = true;
         AttachRealtimeHandler();
+
+        if (!TrySetSessionContext())
+        {
+            await ExitLobbyAsync(CancellationToken.None);
+            ResetLobbyState("No active session found. Join or create a room first.");
+            navigationService.NavigateToCreateRoom();
+            return;
+        }
 
         try
         {
@@ -119,16 +127,30 @@ public partial class RoomLobbyViewModel(
     private async Task LeaveRoomAsync()
     {
         ErrorMessage = string.Empty;
+        var currentRoomCode = NormalizeRoomCode(clientSessionService.CurrentRoomCode ?? string.Empty);
+        var currentPlayerId = NormalizePlayerId(clientSessionService.CurrentPlayerId ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(currentRoomCode) || string.IsNullOrWhiteSpace(currentPlayerId))
+        {
+            ErrorMessage = "No active session found. Join or create a room first.";
+            clientSessionService.ClearSession();
+            await ExitLobbyAsync(CancellationToken.None);
+            navigationService.NavigateToCreateRoom();
+            return;
+        }
+
+        _currentRoomCode = currentRoomCode;
+        _currentPlayerId = currentPlayerId;
         IsLeaving = true;
 
         try
         {
             var response = await roomsApiClient.LeaveRoomAsync(
-                _currentRoomCode,
-                new LeaveRoomRequest(_currentPlayerId),
+                currentRoomCode,
+                new LeaveRoomRequest(currentPlayerId),
                 CancellationToken.None);
 
             await ExitLobbyAsync(CancellationToken.None);
+            clientSessionService.ClearSession();
             ResetLobbyState(response.RoomWasRemoved
                 ? "The room was closed."
                 : "You left the room.");
@@ -141,6 +163,7 @@ public partial class RoomLobbyViewModel(
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
         {
             await ExitLobbyAsync(CancellationToken.None);
+            clientSessionService.ClearSession();
             navigationService.NavigateToCreateRoom();
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.Conflict)
@@ -183,6 +206,7 @@ public partial class RoomLobbyViewModel(
         return RunOnCapturedContextAsync(async () =>
         {
             await ExitLobbyAsync(CancellationToken.None);
+            clientSessionService.ClearSession();
             ResetLobbyState("The room was closed.");
             navigationService.NavigateToCreateRoom();
         });
@@ -273,6 +297,7 @@ public partial class RoomLobbyViewModel(
     private async Task ExitLobbyAsync(CancellationToken cancellationToken)
     {
         _isLobbyActive = false;
+        _refreshRequested = false;
         DetachRealtimeHandler();
 
         try
@@ -289,6 +314,18 @@ public partial class RoomLobbyViewModel(
     {
         await roomLobbyRealtimeClient.UnsubscribeAsync(_subscribedRoomCode, cancellationToken);
         _subscribedRoomCode = string.Empty;
+    }
+
+    private bool TrySetSessionContext()
+    {
+        _currentRoomCode = NormalizeRoomCode(clientSessionService.CurrentRoomCode ?? string.Empty);
+        _currentPlayerId = NormalizePlayerId(clientSessionService.CurrentPlayerId ?? string.Empty);
+
+        RefreshCommand.NotifyCanExecuteChanged();
+        LeaveRoomCommand.NotifyCanExecuteChanged();
+
+        return !string.IsNullOrWhiteSpace(_currentRoomCode)
+            && !string.IsNullOrWhiteSpace(_currentPlayerId);
     }
 
     private void AttachRealtimeHandler()
