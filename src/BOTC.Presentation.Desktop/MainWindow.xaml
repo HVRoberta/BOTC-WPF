@@ -9,9 +9,9 @@
         Height="540"
         MinWidth="640"
         MinHeight="440"
-        Background="{StaticResource RoomWindowBackgroundBrush}">
+        Background="{StaticResource BrushCanvasBackground}">
 
-    <Grid Margin="24">
+    <Grid Margin="{StaticResource SpacingScreenPadding}">
         <ContentControl Content="{Binding CurrentViewModel}" />
     </Grid>
 </Window>

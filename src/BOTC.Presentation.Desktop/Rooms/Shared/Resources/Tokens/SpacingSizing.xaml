@@ -14,11 +14,6 @@
     <sys:Double x:Key="SizeInputHeight">38</sys:Double>
     <sys:Double x:Key="SizeButtonHeight">36</sys:Double>
     <sys:Double x:Key="SizeButtonMinWidth">136</sys:Double>
-
-    <CornerRadius x:Key="RoomCardCornerRadius">{StaticResource CornerRadiusCard}</CornerRadius>
-    <CornerRadius x:Key="RoomBadgeCornerRadius">{StaticResource CornerRadiusBadge}</CornerRadius>
-    <Thickness x:Key="RoomScreenPadding">{StaticResource SpacingScreenPadding}</Thickness>
-    <Thickness x:Key="RoomSectionPadding">{StaticResource SpacingSectionPadding}</Thickness>
 </ResourceDictionary>
 
 

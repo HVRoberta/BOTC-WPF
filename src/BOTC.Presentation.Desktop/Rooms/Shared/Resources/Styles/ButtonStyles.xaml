@@ -26,13 +26,9 @@
 
     <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
         <Setter Property="Foreground" Value="{StaticResource BrushErrorForeground}" />
-        <Setter Property="BorderBrush" Value="#FFD8ABB2" />
-        <Setter Property="Background" Value="#FFFFF7F8" />
+        <Setter Property="BorderBrush" Value="{StaticResource BrushDangerBorder}" />
+        <Setter Property="Background" Value="{StaticResource BrushDangerSurface}" />
     </Style>
-
-    <Style x:Key="RoomPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}" />
-    <Style x:Key="RoomSecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}" />
-    <Style x:Key="RoomDangerButtonStyle" TargetType="Button" BasedOn="{StaticResource DangerButtonStyle}" />
 </ResourceDictionary>
 
 

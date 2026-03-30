@@ -28,6 +28,10 @@
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
+    <Style x:Key="SectionSubtitleTextStyle" TargetType="TextBlock" BasedOn="{StaticResource PageSubtitleTextStyle}">
+        <Setter Property="Margin" Value="0,6,0,0" />
+    </Style>
+
     <Style x:Key="FieldLabelTextStyle" TargetType="TextBlock">
         <Setter Property="Margin" Value="0,0,0,6" />
         <Setter Property="FontSize" Value="13" />
@@ -51,14 +55,6 @@
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{StaticResource BrushBadgeForeground}" />
     </Style>
-
-    <Style x:Key="RoomScreenTitleTextStyle" TargetType="TextBlock" BasedOn="{StaticResource PageTitleTextStyle}" />
-    <Style x:Key="RoomScreenSubtitleTextStyle" TargetType="TextBlock" BasedOn="{StaticResource PageSubtitleTextStyle}" />
-    <Style x:Key="RoomSectionTitleTextStyle" TargetType="TextBlock" BasedOn="{StaticResource SectionTitleTextStyle}" />
-    <Style x:Key="RoomFieldLabelTextStyle" TargetType="TextBlock" BasedOn="{StaticResource FieldLabelTextStyle}" />
-    <Style x:Key="RoomMutedTextStyle" TargetType="TextBlock" BasedOn="{StaticResource MutedTextStyle}" />
-    <Style x:Key="RoomValueTextStyle" TargetType="TextBlock" BasedOn="{StaticResource ValueTextStyle}" />
-    <Style x:Key="RoomStatusBadgeTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BadgeTextStyle}" />
 </ResourceDictionary>
 
 

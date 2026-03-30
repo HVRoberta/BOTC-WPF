@@ -7,49 +7,61 @@
              mc:Ignorable="d"
              d:DesignHeight="400"
              d:DesignWidth="520">
-    <sharedControls:SectionCard Title="Join room"
-                                Subtitle="Enter a room code and the display name you want to use in the lobby.">
-        <sharedControls:SectionCard.BodyContent>
-            <StackPanel>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="16" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <sharedControls:PageHeader Title="Join room"
+                                   Subtitle="Enter a room code and the display name you want to use in the lobby." />
+
+        <sharedControls:SectionCard Grid.Row="2"
+                                    Title="Join details"
+                                    Subtitle="Provide the room code and your display name.">
+            <sharedControls:SectionCard.BodyContent>
                 <StackPanel>
-                    <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                               Text="Room code" />
-                    <TextBox Style="{StaticResource InputTextBoxStyle}"
-                             CharacterCasing="Upper"
-                             MaxLength="6"
-                             Text="{Binding RoomCode, UpdateSourceTrigger=PropertyChanged}" />
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                                   Text="Room code" />
+                        <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                 CharacterCasing="Upper"
+                                 MaxLength="6"
+                                 Text="{Binding RoomCode, UpdateSourceTrigger=PropertyChanged}" />
 
-                    <TextBlock Margin="0,18,0,6"
-                               Style="{StaticResource FieldLabelTextStyle}"
-                               Text="Display name" />
-                    <TextBox Style="{StaticResource InputTextBoxStyle}"
-                             Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Margin="0,18,0,6"
+                                   Style="{StaticResource FieldLabelTextStyle}"
+                                   Text="Display name" />
+                        <TextBox Style="{StaticResource InputTextBoxStyle}"
+                                 Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+
+                    <sharedControls:ActionBar Margin="0,24,0,0">
+                        <sharedControls:ActionBar.LeadingContent>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Margin="0,0,12,0"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        Command="{Binding JoinRoomCommand}"
+                                        Content="Join room" />
+                                <Button Style="{StaticResource SecondaryButtonStyle}"
+                                        Command="{Binding BackToCreateRoomCommand}"
+                                        Content="Back to create room" />
+                            </StackPanel>
+                        </sharedControls:ActionBar.LeadingContent>
+                    </sharedControls:ActionBar>
+
+                    <sharedControls:ErrorBanner Margin="0,24,0,0"
+                                                Message="{Binding ScreenMessage}"
+                                                Kind="{Binding ScreenMessageKind}"
+                                                Show="{Binding HasScreenMessage}" />
+
+                    <sharedControls:LoadingPanel Margin="0,12,0,0"
+                                                 Text="{Binding BusyText}"
+                                                 IsBusy="{Binding IsBusy}" />
                 </StackPanel>
-
-                <sharedControls:ActionBar Margin="0,24,0,0">
-                    <sharedControls:ActionBar.LeadingContent>
-                        <StackPanel Orientation="Horizontal">
-                            <Button Margin="0,0,12,0"
-                                    Style="{StaticResource PrimaryButtonStyle}"
-                                    Command="{Binding JoinRoomCommand}"
-                                    Content="Join room" />
-                            <Button Style="{StaticResource SecondaryButtonStyle}"
-                                    Command="{Binding BackToCreateRoomCommand}"
-                                    Content="Back to create room" />
-                        </StackPanel>
-                    </sharedControls:ActionBar.LeadingContent>
-                </sharedControls:ActionBar>
-
-                <sharedControls:ErrorBanner Margin="0,24,0,0"
-                                            Message="{Binding ScreenMessage}"
-                                            Kind="{Binding ScreenMessageKind}"
-                                            Show="{Binding HasScreenMessage}" />
-
-                <sharedControls:LoadingPanel Margin="0,12,0,0"
-                                             Text="{Binding BusyText}"
-                                             IsBusy="{Binding IsBusy}" />
-            </StackPanel>
-        </sharedControls:SectionCard.BodyContent>
-    </sharedControls:SectionCard>
+            </sharedControls:SectionCard.BodyContent>
+        </sharedControls:SectionCard>
+    </Grid>
 </UserControl>
 

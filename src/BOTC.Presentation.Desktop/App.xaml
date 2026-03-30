@@ -4,14 +4,15 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Rooms/Shared/Resources/DesignSystem/Colors.xaml" />
-                <ResourceDictionary Source="Rooms/Shared/Resources/DesignSystem/Brushes.xaml" />
-                <ResourceDictionary Source="Rooms/Shared/Resources/DesignSystem/Typography.xaml" />
-                <ResourceDictionary Source="Rooms/Shared/Resources/DesignSystem/SpacingSizing.xaml" />
-                <ResourceDictionary Source="Rooms/Shared/Resources/DesignSystem/TextStyles.xaml" />
-                <ResourceDictionary Source="Rooms/Shared/Resources/DesignSystem/ButtonStyles.xaml" />
-                <ResourceDictionary Source="Rooms/Shared/Resources/DesignSystem/ContainerStyles.xaml" />
-                <ResourceDictionary Source="Rooms/Shared/Resources/RoomTemplates.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/Converters.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/Tokens/Colors.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/Tokens/Brushes.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/Tokens/Typography.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/Tokens/SpacingSizing.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/Styles/TextStyles.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/Styles/ButtonStyles.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/Styles/ContainerStyles.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/Templates/ViewTemplates.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

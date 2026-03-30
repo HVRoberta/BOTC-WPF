@@ -1,0 +1,23 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="LobbyPlayerCardStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource BrushSurfaceAlt}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BrushBorderSubtle}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource CornerRadiusSection}" />
+        <Setter Property="Padding" Value="14,12" />
+        <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>
+
+    <Style x:Key="LobbyPlayerNameTextStyle" TargetType="TextBlock" BasedOn="{StaticResource ValueTextStyle}">
+        <Setter Property="FontWeight" Value="Normal" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsHost}" Value="True">
+                <Setter Property="FontWeight" Value="SemiBold" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+</ResourceDictionary>
+
+
+
