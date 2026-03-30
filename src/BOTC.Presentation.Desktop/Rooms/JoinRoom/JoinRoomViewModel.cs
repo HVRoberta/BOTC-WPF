@@ -1,4 +1,4 @@
-﻿﻿using System.Net;
+﻿using System.Net;
 using System.Net.Http;
 using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Desktop.Navigation;
@@ -53,7 +53,7 @@ public partial class JoinRoomViewModel(
         {
             var request = new JoinRoomRequest(DisplayName.Trim());
             var response = await roomsApiClient.JoinRoomAsync(RoomCode.Trim(), request, CancellationToken.None);
-            await navigationService.NavigateToRoomLobbyAsync(response.RoomCode, CancellationToken.None);
+            await navigationService.NavigateToRoomLobbyAsync(response.RoomCode, response.PlayerId, CancellationToken.None);
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.BadRequest)
         {

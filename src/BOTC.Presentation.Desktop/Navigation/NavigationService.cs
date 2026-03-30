@@ -19,10 +19,10 @@ public sealed class NavigationService(
         mainWindowViewModel.CurrentViewModel = serviceProvider.GetRequiredService<JoinRoomViewModel>();
     }
 
-    public async Task NavigateToRoomLobbyAsync(string roomCode, CancellationToken cancellationToken)
+    public async Task NavigateToRoomLobbyAsync(string roomCode, string playerId, CancellationToken cancellationToken)
     {
         var roomLobbyViewModel = serviceProvider.GetRequiredService<RoomLobbyViewModel>();
         mainWindowViewModel.CurrentViewModel = roomLobbyViewModel;
-        await roomLobbyViewModel.LoadAsync(roomCode, cancellationToken);
+        await roomLobbyViewModel.LoadAsync(roomCode, playerId, cancellationToken);
     }
 }

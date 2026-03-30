@@ -1,4 +1,4 @@
-﻿using BOTC.Application.Features.Rooms.CreateRoom;
+﻿﻿using BOTC.Application.Features.Rooms.CreateRoom;
 using BOTC.Contracts.Rooms;
 
 namespace BOTC.Presentation.Api.Rooms;
@@ -15,7 +15,7 @@ internal static class CreateRoomMappings
         return new CreateRoomResponse(
             result.RoomId.Value.ToString(),
             result.RoomCode.Value,
+            result.HostPlayerId.Value.ToString(),
             result.CreatedAtUtc);
     }
 }
-

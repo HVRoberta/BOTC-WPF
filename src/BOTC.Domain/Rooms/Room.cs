@@ -32,6 +32,8 @@ public sealed class Room
 
     public IReadOnlyCollection<RoomPlayer> Players => readOnlyPlayers;
 
+    public RoomPlayerId HostPlayerId => GetHost().Id;
+
     public string HostDisplayName => GetHost().DisplayName;
 
     public RoomStatus Status { get; private set; }
@@ -85,6 +87,45 @@ public sealed class Room
         players.Add(player);
 
         return player;
+    }
+
+    public RoomLeaveOutcome LeavePlayer(RoomPlayerId playerId)
+    {
+        var leavingPlayer = players.SingleOrDefault(player => player.Id == playerId);
+        if (leavingPlayer is null)
+        {
+            throw new RoomLeavePlayerNotFoundException(playerId);
+        }
+
+        if (players.Count == 1)
+        {
+            players.RemoveAt(0);
+            return new RoomLeaveOutcome(true, null);
+        }
+
+        players.RemoveAll(player => player.Id == playerId);
+
+        if (leavingPlayer.Role != RoomPlayerRole.Host)
+        {
+            EnsurePlayerInvariants(players);
+            return new RoomLeaveOutcome(false, null);
+        }
+
+        var successor = players
+            .OrderBy(player => player.JoinedAtUtc)
+            .ThenBy(player => player.Id.Value)
+            .First();
+
+        var successorIndex = players.FindIndex(player => player.Id == successor.Id);
+        players[successorIndex] = RoomPlayer.Create(
+            successor.Id,
+            successor.DisplayName,
+            RoomPlayerRole.Host,
+            successor.JoinedAtUtc);
+
+        EnsurePlayerInvariants(players);
+
+        return new RoomLeaveOutcome(false, successor.Id);
     }
 
     public void RenameHost(string hostDisplayName)

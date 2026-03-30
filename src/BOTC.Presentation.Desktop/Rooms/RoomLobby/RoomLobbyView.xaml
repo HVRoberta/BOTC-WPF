@@ -112,6 +112,13 @@
         <StackPanel Grid.Row="12"
                     Orientation="Horizontal">
             <Button Height="34"
+                    Width="120"
+                    HorizontalAlignment="Left"
+                    Command="{Binding LeaveRoomCommand}"
+                    Content="Leave room" />
+
+            <Button Margin="12,0,0,0"
+                    Height="34"
                     Width="170"
                     HorizontalAlignment="Left"
                     Command="{Binding BackToCreateRoomCommand}"
@@ -123,6 +130,12 @@
                          IsIndeterminate="True"
                          VerticalAlignment="Center"
                          Visibility="{Binding IsRefreshing, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+            <TextBlock Margin="12,0,0,0"
+                       VerticalAlignment="Center"
+                       Foreground="Gray"
+                       Text="Leaving room..."
+                       Visibility="{Binding IsLeaving, Converter={StaticResource BooleanToVisibilityConverter}}" />
         </StackPanel>
     </Grid>
 </UserControl>
