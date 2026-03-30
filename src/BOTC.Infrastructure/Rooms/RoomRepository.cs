@@ -1,5 +1,6 @@
-﻿﻿using BOTC.Application.Abstractions.Persistence;
+﻿using BOTC.Application.Abstractions.Persistence;
 using BOTC.Application.Features.Rooms.JoinRoom;
+using BOTC.Application.Features.Rooms.LeaveRoom;
 using BOTC.Domain.Rooms;
 using BOTC.Infrastructure.Persistence;
 using BOTC.Infrastructure.Persistence.Rooms;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BOTC.Infrastructure.Rooms;
 
-public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository
+public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository, IRoomLeaveRepository
 {
     private const int SqliteConstraintErrorCode = 19;
     private const int SqliteConstraintUniqueExtendedErrorCode = 2067;
@@ -31,11 +32,12 @@ public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository
         try
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
+            _dbContext.ChangeTracker.Clear();
             return true;
         }
         catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
         {
-            _dbContext.Entry(entity).State = EntityState.Detached;
+            _dbContext.ChangeTracker.Clear();
             return false;
         }
     }
@@ -43,17 +45,36 @@ public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository
     public async Task<Room?> GetByCodeAsync(RoomCode roomCode, CancellationToken cancellationToken)
     {
         var entity = await _dbContext.Rooms
+            .AsNoTracking()
             .Include(room => room.Players)
             .SingleOrDefaultAsync(room => room.Code == roomCode.Value, cancellationToken);
 
         return entity is null ? null : MapToDomain(entity);
     }
 
-    public async Task<bool> TrySaveAsync(Room room, CancellationToken cancellationToken)
+    Task<Room?> IRoomJoinRepository.GetByCodeAsync(RoomCode roomCode, CancellationToken cancellationToken) =>
+        GetByCodeAsync(roomCode, cancellationToken);
+
+    Task<Room?> IRoomLeaveRepository.GetByCodeAsync(RoomCode roomCode, CancellationToken cancellationToken) =>
+        GetByCodeAsync(roomCode, cancellationToken);
+
+    Task<bool> IRoomJoinRepository.TrySaveAsync(Room room, CancellationToken cancellationToken) =>
+        TrySaveForJoinAsync(room, cancellationToken);
+
+    Task<bool> IRoomLeaveRepository.TrySaveAsync(Room room, CancellationToken cancellationToken) =>
+        TrySaveAsyncCore(room, cancellationToken, roomId => new RoomLeaveSaveRoomMissingException(roomId));
+
+    Task<bool> IRoomLeaveRepository.TryDeleteAsync(RoomId roomId, CancellationToken cancellationToken) =>
+        TryDeleteAsyncCore(roomId, cancellationToken);
+
+    private async Task<bool> TrySaveForJoinAsync(Room room, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(room);
 
+        _dbContext.ChangeTracker.Clear();
+
         var roomExists = await _dbContext.Rooms
+            .AsNoTracking()
             .AnyAsync(existingRoom => existingRoom.Id == room.Id.Value, cancellationToken);
 
         if (!roomExists)
@@ -62,6 +83,7 @@ public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository
         }
 
         var persistedPlayerIds = await _dbContext.RoomPlayers
+            .AsNoTracking()
             .Where(player => player.RoomId == room.Id.Value)
             .Select(player => player.Id)
             .ToHashSetAsync(cancellationToken);
@@ -81,15 +103,134 @@ public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository
         try
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
+            _dbContext.ChangeTracker.Clear();
             return true;
         }
         catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
         {
+            _dbContext.ChangeTracker.Clear();
             return false;
         }
         catch (DbUpdateException exception) when (IsForeignKeyConstraintViolation(exception))
         {
+            _dbContext.ChangeTracker.Clear();
             throw new RoomJoinSaveRoomMissingException(room.Id);
+        }
+    }
+
+    private async Task<bool> TrySaveAsyncCore(
+        Room room,
+        CancellationToken cancellationToken,
+        Func<RoomId, Exception> createMissingRoomException)
+    {
+        ArgumentNullException.ThrowIfNull(room);
+
+        if (room.Players.Count == 0)
+        {
+            throw new ArgumentException("Room must contain at least one player when being saved.", nameof(room));
+        }
+
+        _dbContext.ChangeTracker.Clear();
+
+        var entity = await _dbContext.Rooms
+            .Include(existingRoom => existingRoom.Players)
+            .SingleOrDefaultAsync(existingRoom => existingRoom.Id == room.Id.Value, cancellationToken);
+
+        if (entity is null)
+        {
+            throw createMissingRoomException(room.Id);
+        }
+
+        if (!string.Equals(entity.Code, room.Code.Value, StringComparison.Ordinal))
+        {
+            entity.Code = room.Code.Value;
+        }
+
+        if (entity.Status != (int)room.Status)
+        {
+            entity.Status = (int)room.Status;
+        }
+
+        if (!AreSameUtcInstant(entity.CreatedAtUtc, room.CreatedAtUtc))
+        {
+            entity.CreatedAtUtc = room.CreatedAtUtc;
+        }
+
+        SynchronizePlayers(entity, room);
+
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            _dbContext.ChangeTracker.Clear();
+            return true;
+        }
+        catch (DbUpdateException exception) when (IsUniqueConstraintViolation(exception))
+        {
+            _dbContext.ChangeTracker.Clear();
+            return false;
+        }
+        catch (DbUpdateException exception) when (IsForeignKeyConstraintViolation(exception))
+        {
+            _dbContext.ChangeTracker.Clear();
+            throw createMissingRoomException(room.Id);
+        }
+    }
+
+    private async Task<bool> TryDeleteAsyncCore(RoomId roomId, CancellationToken cancellationToken)
+    {
+        _dbContext.ChangeTracker.Clear();
+
+        var entity = await _dbContext.Rooms
+            .SingleOrDefaultAsync(room => room.Id == roomId.Value, cancellationToken);
+
+        if (entity is null)
+        {
+            return false;
+        }
+
+        _dbContext.Rooms.Remove(entity);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        _dbContext.ChangeTracker.Clear();
+        return true;
+    }
+
+    private void SynchronizePlayers(RoomEntity entity, Room room)
+    {
+        var desiredPlayersById = room.Players.ToDictionary(player => player.Id.Value);
+
+        foreach (var persistedPlayer in entity.Players.Where(player => !desiredPlayersById.ContainsKey(player.Id)).ToArray())
+        {
+            _dbContext.RoomPlayers.Remove(persistedPlayer);
+        }
+
+        foreach (var desiredPlayer in room.Players)
+        {
+            var persistedPlayer = entity.Players.SingleOrDefault(player => player.Id == desiredPlayer.Id.Value);
+            if (persistedPlayer is null)
+            {
+                entity.Players.Add(MapToEntity(desiredPlayer, room.Id));
+                continue;
+            }
+
+            if (!string.Equals(persistedPlayer.DisplayName, desiredPlayer.DisplayName, StringComparison.Ordinal))
+            {
+                persistedPlayer.DisplayName = desiredPlayer.DisplayName;
+            }
+
+            if (!string.Equals(persistedPlayer.NormalizedDisplayName, desiredPlayer.NormalizedDisplayName, StringComparison.Ordinal))
+            {
+                persistedPlayer.NormalizedDisplayName = desiredPlayer.NormalizedDisplayName;
+            }
+
+            if (persistedPlayer.Role != (int)desiredPlayer.Role)
+            {
+                persistedPlayer.Role = (int)desiredPlayer.Role;
+            }
+
+            if (!AreSameUtcInstant(persistedPlayer.JoinedAtUtc, desiredPlayer.JoinedAtUtc))
+            {
+                persistedPlayer.JoinedAtUtc = desiredPlayer.JoinedAtUtc;
+            }
         }
     }
 
@@ -137,7 +278,7 @@ public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository
             new RoomCode(entity.Code),
             players,
             (RoomStatus)entity.Status,
-            entity.CreatedAtUtc);
+            NormalizePersistedUtc(entity.CreatedAtUtc));
     }
 
     private static RoomPlayer MapToDomain(RoomPlayerEntity entity)
@@ -153,7 +294,25 @@ public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository
             entity.DisplayName,
             entity.NormalizedDisplayName,
             (RoomPlayerRole)entity.Role,
-            entity.JoinedAtUtc);
+            NormalizePersistedUtc(entity.JoinedAtUtc));
+    }
+
+    private static DateTime NormalizePersistedUtc(DateTime value)
+    {
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            DateTimeKind.Unspecified => DateTime.SpecifyKind(value, DateTimeKind.Utc),
+            _ => throw new ArgumentOutOfRangeException(nameof(value), value, "Unsupported DateTime kind.")
+        };
+    }
+
+    private static bool AreSameUtcInstant(DateTime left, DateTime right)
+    {
+        var normalizedLeft = NormalizePersistedUtc(left);
+        var normalizedRight = NormalizePersistedUtc(right);
+        return normalizedLeft == normalizedRight;
     }
 
     private static bool IsUniqueConstraintViolation(DbUpdateException exception)

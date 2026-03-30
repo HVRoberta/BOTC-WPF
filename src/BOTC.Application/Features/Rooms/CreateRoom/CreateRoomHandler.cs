@@ -1,4 +1,4 @@
-﻿using BOTC.Application.Abstractions.Persistence;
+﻿﻿using BOTC.Application.Abstractions.Persistence;
 using BOTC.Application.Abstractions.Services;
 using BOTC.Domain.Rooms;
 
@@ -42,6 +42,7 @@ public sealed class CreateRoomHandler
             return new CreateRoomResult(
                 room.Id,
                 room.Code,
+                room.HostPlayerId,
                 room.HostDisplayName,
                 room.Status,
                 room.CreatedAtUtc);

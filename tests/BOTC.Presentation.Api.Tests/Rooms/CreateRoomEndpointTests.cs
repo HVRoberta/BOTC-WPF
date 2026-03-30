@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+﻿﻿using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using BOTC.Application.Abstractions.Persistence;
@@ -38,6 +38,7 @@ public sealed class CreateRoomEndpointTests
         var root = document.RootElement;
         Assert.Equal(repository.LastAddedRoom!.Id.Value.ToString(), root.GetProperty("roomId").GetString());
         Assert.Equal("AB12CD", root.GetProperty("roomCode").GetString());
+        Assert.Equal(repository.LastAddedRoom.HostPlayerId.Value.ToString(), root.GetProperty("playerId").GetString());
         Assert.Equal(
             repository.LastAddedRoom.CreatedAtUtc,
             root.GetProperty("createdAtUtc").GetDateTime());
@@ -243,6 +244,11 @@ public sealed class CreateRoomEndpointTests
         {
             NotifiedRoomCodes.Add(roomCode);
             return Task.CompletedTask;
+        }
+
+        public Task NotifyLobbyClosedAsync(string roomCode, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using BOTC.Contracts.Rooms;
+﻿﻿using BOTC.Contracts.Rooms;
 using Microsoft.AspNetCore.SignalR;
 
 namespace BOTC.Presentation.Api.Rooms.Realtime;
@@ -7,14 +7,25 @@ public sealed class SignalRRoomLobbyNotifier(IHubContext<RoomLobbyHub> hubContex
 {
     public Task NotifyLobbyUpdatedAsync(string roomCode, CancellationToken cancellationToken)
     {
+        return NotifyAsync(roomCode, RoomLobbyHubContract.LobbyUpdatedEvent, cancellationToken);
+    }
+
+    public Task NotifyLobbyClosedAsync(string roomCode, CancellationToken cancellationToken)
+    {
+        return NotifyAsync(roomCode, RoomLobbyHubContract.LobbyClosedEvent, cancellationToken);
+    }
+
+    private Task NotifyAsync(string roomCode, string eventName, CancellationToken cancellationToken)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(roomCode);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
 
         var normalizedRoomCode = RoomLobbyGroups.NormalizeRoomCode(roomCode);
         var groupName = RoomLobbyGroups.ForRoom(normalizedRoomCode);
 
         return hubContext.Clients
             .Group(groupName)
-            .SendCoreAsync(RoomLobbyHubContract.LobbyUpdatedEvent, [normalizedRoomCode], cancellationToken);
+            .SendCoreAsync(eventName, [normalizedRoomCode], cancellationToken);
     }
 }
 

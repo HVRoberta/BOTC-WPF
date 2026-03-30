@@ -17,6 +17,7 @@ public partial class RoomLobbyViewModel(
 
     private readonly SynchronizationContext? _capturedSynchronizationContext = SynchronizationContext.Current;
     private string _currentRoomCode = string.Empty;
+    private string _currentPlayerId = string.Empty;
     private string _subscribedRoomCode = string.Empty;
     private bool _hasLobbyData;
     private bool _isLobbyActive;
@@ -37,11 +38,18 @@ public partial class RoomLobbyViewModel(
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
+    [NotifyCanExecuteChangedFor(nameof(LeaveRoomCommand))]
     private bool _isLoading;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
+    [NotifyCanExecuteChangedFor(nameof(LeaveRoomCommand))]
     private bool _isRefreshing;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
+    [NotifyCanExecuteChangedFor(nameof(LeaveRoomCommand))]
+    private bool _isLeaving;
 
     [RelayCommand]
     private void BackToCreateRoom()
@@ -49,15 +57,17 @@ public partial class RoomLobbyViewModel(
         navigationService.NavigateToCreateRoom();
     }
 
-    public async Task LoadAsync(string roomCode, CancellationToken cancellationToken)
+    public async Task LoadAsync(string roomCode, string playerId, CancellationToken cancellationToken)
     {
         _currentRoomCode = NormalizeRoomCode(roomCode);
+        _currentPlayerId = NormalizePlayerId(playerId);
         RefreshCommand.NotifyCanExecuteChanged();
+        LeaveRoomCommand.NotifyCanExecuteChanged();
 
-        if (string.IsNullOrWhiteSpace(_currentRoomCode))
+        if (string.IsNullOrWhiteSpace(_currentRoomCode) || string.IsNullOrWhiteSpace(_currentPlayerId))
         {
             await StopRealtimeUpdatesAsync(CancellationToken.None);
-            ResetLobbyState("Enter a valid room code to load the lobby.");
+            ResetLobbyState("Enter a valid room and player to load the lobby.");
             return;
         }
 
@@ -83,28 +93,72 @@ public partial class RoomLobbyViewModel(
 
     public async Task DeactivateAsync(CancellationToken cancellationToken)
     {
-        _isLobbyActive = false;
-        DetachRealtimeHandler();
-
-        try
-        {
-            await StopRealtimeUpdatesAsync(cancellationToken);
-        }
-        catch
-        {
-            // Best-effort cleanup to avoid leaving background connections running.
-        }
+        await ExitLobbyAsync(cancellationToken);
     }
 
     private bool CanRefresh() =>
         !string.IsNullOrWhiteSpace(_currentRoomCode)
         && !IsLoading
-        && !IsRefreshing;
+        && !IsRefreshing
+        && !IsLeaving;
 
     [RelayCommand(CanExecute = nameof(CanRefresh), AllowConcurrentExecutions = false)]
     private Task RefreshAsync()
     {
         return QueueLobbyRefreshAsync(CancellationToken.None);
+    }
+
+    private bool CanLeaveRoom() =>
+        !string.IsNullOrWhiteSpace(_currentRoomCode)
+        && !string.IsNullOrWhiteSpace(_currentPlayerId)
+        && !IsLoading
+        && !IsRefreshing
+        && !IsLeaving;
+
+    [RelayCommand(CanExecute = nameof(CanLeaveRoom), AllowConcurrentExecutions = false)]
+    private async Task LeaveRoomAsync()
+    {
+        ErrorMessage = string.Empty;
+        IsLeaving = true;
+
+        try
+        {
+            var response = await roomsApiClient.LeaveRoomAsync(
+                _currentRoomCode,
+                new LeaveRoomRequest(_currentPlayerId),
+                CancellationToken.None);
+
+            await ExitLobbyAsync(CancellationToken.None);
+            ResetLobbyState(response.RoomWasRemoved
+                ? "The room was closed."
+                : "You left the room.");
+            navigationService.NavigateToCreateRoom();
+        }
+        catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.BadRequest)
+        {
+            ErrorMessage = "Leave request was invalid.";
+        }
+        catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
+        {
+            await ExitLobbyAsync(CancellationToken.None);
+            navigationService.NavigateToCreateRoom();
+        }
+        catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.Conflict)
+        {
+            ErrorMessage = "Unable to leave the room due to a conflicting room state. Please refresh and try again.";
+        }
+        catch (HttpRequestException)
+        {
+            ErrorMessage = "Unable to contact the server. Please try again.";
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Unexpected error occurred while leaving the room.";
+        }
+        finally
+        {
+            IsLeaving = false;
+        }
     }
 
     private Task HandleLobbyUpdatedAsync(string roomCode)
@@ -116,6 +170,22 @@ public partial class RoomLobbyViewModel(
         }
 
         return QueueLobbyRefreshAsync(CancellationToken.None);
+    }
+
+    private Task HandleLobbyClosedAsync(string roomCode)
+    {
+        var normalizedRoomCode = NormalizeRoomCode(roomCode);
+        if (!_isLobbyActive || !string.Equals(normalizedRoomCode, _currentRoomCode, StringComparison.Ordinal))
+        {
+            return Task.CompletedTask;
+        }
+
+        return RunOnCapturedContextAsync(async () =>
+        {
+            await ExitLobbyAsync(CancellationToken.None);
+            ResetLobbyState("The room was closed.");
+            navigationService.NavigateToCreateRoom();
+        });
     }
 
     private async Task QueueLobbyRefreshAsync(CancellationToken cancellationToken)
@@ -181,7 +251,7 @@ public partial class RoomLobbyViewModel(
 
     private async Task EnsureRealtimeSubscriptionAsync(CancellationToken cancellationToken)
     {
-        if (!_isLobbyActive || string.IsNullOrWhiteSpace(_currentRoomCode))
+        if (!_isLobbyActive || string.IsNullOrWhiteSpace(_currentRoomCode) || IsLeaving)
         {
             return;
         }
@@ -200,6 +270,21 @@ public partial class RoomLobbyViewModel(
         _subscribedRoomCode = _currentRoomCode;
     }
 
+    private async Task ExitLobbyAsync(CancellationToken cancellationToken)
+    {
+        _isLobbyActive = false;
+        DetachRealtimeHandler();
+
+        try
+        {
+            await StopRealtimeUpdatesAsync(cancellationToken);
+        }
+        catch
+        {
+            // Best-effort cleanup to avoid leaving background connections running.
+        }
+    }
+
     private async Task StopRealtimeUpdatesAsync(CancellationToken cancellationToken)
     {
         await roomLobbyRealtimeClient.UnsubscribeAsync(_subscribedRoomCode, cancellationToken);
@@ -214,6 +299,7 @@ public partial class RoomLobbyViewModel(
         }
 
         roomLobbyRealtimeClient.LobbyUpdated += HandleLobbyUpdatedAsync;
+        roomLobbyRealtimeClient.LobbyClosed += HandleLobbyClosedAsync;
         _isRealtimeHandlerAttached = true;
     }
 
@@ -225,6 +311,7 @@ public partial class RoomLobbyViewModel(
         }
 
         roomLobbyRealtimeClient.LobbyUpdated -= HandleLobbyUpdatedAsync;
+        roomLobbyRealtimeClient.LobbyClosed -= HandleLobbyClosedAsync;
         _isRealtimeHandlerAttached = false;
     }
 
@@ -291,9 +378,12 @@ public partial class RoomLobbyViewModel(
         ErrorMessage = errorMessage;
         IsLoading = false;
         IsRefreshing = false;
+        IsLeaving = false;
         _hasLobbyData = false;
         _currentRoomCode = string.Empty;
+        _currentPlayerId = string.Empty;
         RefreshCommand.NotifyCanExecuteChanged();
+        LeaveRoomCommand.NotifyCanExecuteChanged();
     }
 
     private static string NormalizeRoomCode(string roomCode)
@@ -301,6 +391,13 @@ public partial class RoomLobbyViewModel(
         return string.IsNullOrWhiteSpace(roomCode)
             ? string.Empty
             : roomCode.Trim().ToUpperInvariant();
+    }
+
+    private static string NormalizePlayerId(string playerId)
+    {
+        return string.IsNullOrWhiteSpace(playerId)
+            ? string.Empty
+            : playerId.Trim();
     }
 
     private static string BuildLobbyErrorMessage(HttpStatusCode? statusCode, bool preserveCurrentLobbyState)

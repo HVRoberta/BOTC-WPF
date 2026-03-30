@@ -1,4 +1,4 @@
-﻿using System.Threading;
+﻿﻿using System.Threading;
 using System.Threading.Tasks;
 
 namespace BOTC.Presentation.Desktop.Navigation;
@@ -9,5 +9,5 @@ public interface INavigationService
 
     void NavigateToJoinRoom();
 
-    Task NavigateToRoomLobbyAsync(string roomCode, CancellationToken cancellationToken);
+    Task NavigateToRoomLobbyAsync(string roomCode, string playerId, CancellationToken cancellationToken);
 }

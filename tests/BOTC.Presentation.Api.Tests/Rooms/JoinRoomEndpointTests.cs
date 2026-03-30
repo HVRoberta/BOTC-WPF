@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+﻿﻿using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using BOTC.Application.Features.Rooms.JoinRoom;
@@ -178,6 +178,11 @@ public sealed class JoinRoomEndpointTests
         {
             NotifiedRoomCodes.Add(roomCode);
             return Task.CompletedTask;
+        }
+
+        public Task NotifyLobbyClosedAsync(string roomCode, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
         }
     }
 }

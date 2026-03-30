@@ -1,4 +1,4 @@
-﻿﻿using BOTC.Domain.Rooms;
+﻿using BOTC.Domain.Rooms;
 
 namespace BOTC.Domain.Tests.Rooms;
 
@@ -193,5 +193,63 @@ public sealed class RoomTests
         Assert.True(collection.IsReadOnly);
         Assert.Throws<NotSupportedException>(() =>
             collection.Add(RoomPlayer.Create(RoomPlayerId.New(), "Alice", RoomPlayerRole.Player, DateTime.UtcNow)));
+    }
+
+    [Fact]
+    public void LeavePlayer_WhenNonHostLeaves_RemovesPlayerAndKeepsExistingHost()
+    {
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+        var alice = room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
+        var bob = room.JoinPlayer("Bob", DateTime.UtcNow.AddSeconds(2));
+        var originalHostId = room.HostPlayerId;
+
+        var outcome = room.LeavePlayer(alice.Id);
+
+        Assert.False(outcome.RoomWasRemoved);
+        Assert.Null(outcome.NewHostPlayerId);
+        Assert.Equal(originalHostId, room.HostPlayerId);
+        Assert.DoesNotContain(room.Players, player => player.Id == alice.Id);
+        Assert.Contains(room.Players, player => player.Id == bob.Id);
+    }
+
+    [Fact]
+    public void LeavePlayer_WhenHostLeaves_TransfersHostToLongestPresentRemainingPlayer()
+    {
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+        var originalHostId = room.HostPlayerId;
+        var alice = room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
+        var bob = room.JoinPlayer("Bob", DateTime.UtcNow.AddSeconds(2));
+
+        var outcome = room.LeavePlayer(originalHostId);
+
+        Assert.False(outcome.RoomWasRemoved);
+        Assert.Equal(alice.Id, outcome.NewHostPlayerId);
+        Assert.Equal(alice.Id, room.HostPlayerId);
+        Assert.DoesNotContain(room.Players, player => player.Id == originalHostId);
+        Assert.Contains(room.Players, player => player.Id == bob.Id && player.Role == RoomPlayerRole.Player);
+    }
+
+    [Fact]
+    public void LeavePlayer_WhenLastPlayerLeaves_ReturnsRoomRemovedOutcome()
+    {
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+        var hostPlayerId = room.HostPlayerId;
+
+        var outcome = room.LeavePlayer(hostPlayerId);
+
+        Assert.True(outcome.RoomWasRemoved);
+        Assert.Null(outcome.NewHostPlayerId);
+        Assert.Empty(room.Players);
+    }
+
+    [Fact]
+    public void LeavePlayer_WhenPlayerDoesNotExist_ThrowsRoomLeavePlayerNotFoundException()
+    {
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+        var missingPlayerId = RoomPlayerId.New();
+
+        var exception = Assert.Throws<RoomLeavePlayerNotFoundException>(() => room.LeavePlayer(missingPlayerId));
+
+        Assert.Equal(missingPlayerId, exception.PlayerId);
     }
 }

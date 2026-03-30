@@ -1,41 +1,44 @@
-﻿using BOTC.Contracts.Rooms;
+﻿﻿using BOTC.Contracts.Rooms;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace BOTC.Presentation.Desktop.Rooms.RoomLobby;
 
 public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposable
 {
-    private readonly HubConnection hubConnection;
-    private string? subscribedRoomCode;
-    private bool isDisposed;
+    private readonly HubConnection _hubConnection;
+    private string? _subscribedRoomCode;
+    private bool _isDisposed;
 
     public RoomLobbyRealtimeClient(Uri roomsApiBaseAddress)
     {
         ArgumentNullException.ThrowIfNull(roomsApiBaseAddress);
 
         var hubUri = new Uri(roomsApiBaseAddress, RoomLobbyHubContract.HubRoute);
-        hubConnection = new HubConnectionBuilder()
+        _hubConnection = new HubConnectionBuilder()
             .WithUrl(hubUri)
             .WithAutomaticReconnect()
             .Build();
 
-        hubConnection.On<string>(RoomLobbyHubContract.LobbyUpdatedEvent, OnLobbyUpdatedAsync);
-        hubConnection.Reconnected += OnReconnectedAsync;
+        _hubConnection.On<string>(RoomLobbyHubContract.LobbyUpdatedEvent, OnLobbyUpdatedAsync);
+        _hubConnection.On<string>(RoomLobbyHubContract.LobbyClosedEvent, OnLobbyClosedAsync);
+        _hubConnection.Reconnected += OnReconnectedAsync;
     }
 
     public event Func<string, Task>? LobbyUpdated;
+
+    public event Func<string, Task>? LobbyClosed;
 
     public async Task SubscribeAsync(string roomCode, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
 
         var normalizedRoomCode = NormalizeRoomCode(roomCode);
-        var previousRoomCode = subscribedRoomCode;
-        subscribedRoomCode = normalizedRoomCode;
+        var previousRoomCode = _subscribedRoomCode;
+        _subscribedRoomCode = normalizedRoomCode;
 
         await EnsureStartedAsync(cancellationToken);
 
-        if (hubConnection.State != HubConnectionState.Connected)
+        if (_hubConnection.State != HubConnectionState.Connected)
         {
             return;
         }
@@ -43,10 +46,10 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
         if (!string.IsNullOrWhiteSpace(previousRoomCode)
             && !string.Equals(previousRoomCode, normalizedRoomCode, StringComparison.Ordinal))
         {
-            await hubConnection.InvokeAsync(RoomLobbyHubContract.LeaveLobbyGroupMethod, previousRoomCode, cancellationToken);
+            await _hubConnection.InvokeAsync(RoomLobbyHubContract.LeaveLobbyGroupMethod, previousRoomCode, cancellationToken);
         }
 
-        await hubConnection.InvokeAsync(RoomLobbyHubContract.JoinLobbyGroupMethod, normalizedRoomCode, cancellationToken);
+        await _hubConnection.InvokeAsync(RoomLobbyHubContract.JoinLobbyGroupMethod, normalizedRoomCode, cancellationToken);
     }
 
     public async Task UnsubscribeAsync(string roomCode, CancellationToken cancellationToken)
@@ -54,19 +57,19 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
         ThrowIfDisposed();
 
         var roomCodeToLeave = string.IsNullOrWhiteSpace(roomCode)
-            ? subscribedRoomCode
+            ? _subscribedRoomCode
             : NormalizeRoomCode(roomCode);
 
-        subscribedRoomCode = null;
+        _subscribedRoomCode = null;
 
-        if (hubConnection.State == HubConnectionState.Connected && !string.IsNullOrWhiteSpace(roomCodeToLeave))
+        if (_hubConnection.State == HubConnectionState.Connected && !string.IsNullOrWhiteSpace(roomCodeToLeave))
         {
-            await hubConnection.InvokeAsync(RoomLobbyHubContract.LeaveLobbyGroupMethod, roomCodeToLeave, cancellationToken);
+            await _hubConnection.InvokeAsync(RoomLobbyHubContract.LeaveLobbyGroupMethod, roomCodeToLeave, cancellationToken);
         }
 
-        if (hubConnection.State != HubConnectionState.Disconnected)
+        if (_hubConnection.State != HubConnectionState.Disconnected)
         {
-            await hubConnection.StopAsync(cancellationToken);
+            await _hubConnection.StopAsync(cancellationToken);
         }
     }
 
@@ -77,30 +80,50 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
 
     public async ValueTask DisposeAsync()
     {
-        if (isDisposed)
+        if (_isDisposed)
         {
             return;
         }
 
-        isDisposed = true;
-        subscribedRoomCode = null;
-        hubConnection.Reconnected -= OnReconnectedAsync;
-        await hubConnection.DisposeAsync();
+        _isDisposed = true;
+        _subscribedRoomCode = null;
+        _hubConnection.Reconnected -= OnReconnectedAsync;
+        await _hubConnection.DisposeAsync();
     }
 
     private async Task EnsureStartedAsync(CancellationToken cancellationToken)
     {
-        if (hubConnection.State is HubConnectionState.Connected or HubConnectionState.Connecting or HubConnectionState.Reconnecting)
+        if (_hubConnection.State is HubConnectionState.Connected or HubConnectionState.Connecting or HubConnectionState.Reconnecting)
         {
             return;
         }
 
-        await hubConnection.StartAsync(cancellationToken);
+        await _hubConnection.StartAsync(cancellationToken);
     }
 
     private async Task OnLobbyUpdatedAsync(string roomCode)
     {
-        var handler = LobbyUpdated;
+        await RaiseAsync(LobbyUpdated, roomCode);
+    }
+
+    private async Task OnLobbyClosedAsync(string roomCode)
+    {
+        await RaiseAsync(LobbyClosed, roomCode);
+    }
+
+    private async Task OnReconnectedAsync(string? _)
+    {
+        if (string.IsNullOrWhiteSpace(_subscribedRoomCode))
+        {
+            return;
+        }
+
+        await _hubConnection.InvokeAsync(RoomLobbyHubContract.JoinLobbyGroupMethod, _subscribedRoomCode);
+        await OnLobbyUpdatedAsync(_subscribedRoomCode);
+    }
+
+    private static async Task RaiseAsync(Func<string, Task>? handler, string roomCode)
+    {
         if (handler is null)
         {
             return;
@@ -113,20 +136,9 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
         }
     }
 
-    private async Task OnReconnectedAsync(string? _)
-    {
-        if (string.IsNullOrWhiteSpace(subscribedRoomCode))
-        {
-            return;
-        }
-
-        await hubConnection.InvokeAsync(RoomLobbyHubContract.JoinLobbyGroupMethod, subscribedRoomCode);
-        await OnLobbyUpdatedAsync(subscribedRoomCode);
-    }
-
     private void ThrowIfDisposed()
     {
-        ObjectDisposedException.ThrowIf(isDisposed, this);
+        ObjectDisposedException.ThrowIf(_isDisposed, this);
     }
 
     private static string NormalizeRoomCode(string roomCode)
