@@ -2,69 +2,46 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:sharedControls="clr-namespace:BOTC.Presentation.Desktop.Rooms.Shared.Controls"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
-             d:DesignHeight="320"
-             d:DesignWidth="420">
-    <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-    </UserControl.Resources>
+             d:DesignHeight="400"
+             d:DesignWidth="520">
+    <sharedControls:RoomFormLayout Title="Join room"
+                                   Subtitle="Enter a room code and the display name you want to use in the lobby."
+                                   MessageText="{Binding ScreenMessage}"
+                                   MessageKind="{Binding ScreenMessageKind}"
+                                   HasMessage="{Binding HasScreenMessage}"
+                                   BusyText="{Binding BusyText}"
+                                   IsBusy="{Binding IsBusy}">
+        <sharedControls:RoomFormLayout.FormContent>
+            <StackPanel>
+                <TextBlock Style="{StaticResource RoomFieldLabelTextStyle}"
+                           Text="Room code" />
+                <TextBox Style="{StaticResource RoomTextBoxStyle}"
+                         CharacterCasing="Upper"
+                         MaxLength="6"
+                         Text="{Binding RoomCode, UpdateSourceTrigger=PropertyChanged}" />
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="12" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="12" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="12" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="12" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+                <TextBlock Margin="0,18,0,6"
+                           Style="{StaticResource RoomFieldLabelTextStyle}"
+                           Text="Display name" />
+                <TextBox Style="{StaticResource RoomTextBoxStyle}"
+                         Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+            </StackPanel>
+        </sharedControls:RoomFormLayout.FormContent>
 
-        <TextBlock FontSize="22" FontWeight="SemiBold" Text="Join Room" />
-
-        <TextBlock Grid.Row="2"
-                   Margin="0,0,0,4"
-                   Text="Room code" />
-        <TextBox Grid.Row="2"
-                 Margin="0,22,0,0"
-                 CharacterCasing="Upper"
-                 MaxLength="6"
-                 Text="{Binding RoomCode, UpdateSourceTrigger=PropertyChanged}" />
-
-        <TextBlock Grid.Row="4"
-                   Margin="0,0,0,4"
-                   Text="Display name" />
-        <TextBox Grid.Row="4"
-                 Margin="0,22,0,0"
-                 Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
-
-        <StackPanel Grid.Row="6"
-                    Orientation="Horizontal">
-            <Button Height="34"
-                    Margin="0,0,12,0"
-                    Padding="20,0"
-                    Command="{Binding JoinRoomCommand}"
-                    Content="Join room" />
-            <Button Height="34"
-                    Padding="20,0"
-                    Command="{Binding BackToCreateRoomCommand}"
-                    Content="Back" />
-        </StackPanel>
-
-        <TextBlock Grid.Row="8"
-                   Foreground="IndianRed"
-                   Text="{Binding ErrorMessage}" />
-
-        <ProgressBar Grid.Row="10"
-                     Margin="0,16,0,0"
-                     Height="8"
-                     IsIndeterminate="True"
-                     Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
-    </Grid>
+        <sharedControls:RoomFormLayout.ActionContent>
+            <StackPanel Style="{StaticResource RoomActionRowStyle}">
+                <Button Margin="0,0,12,0"
+                        Style="{StaticResource RoomPrimaryButtonStyle}"
+                        Command="{Binding JoinRoomCommand}"
+                        Content="Join room" />
+                <Button Style="{StaticResource RoomSecondaryButtonStyle}"
+                        Command="{Binding BackToCreateRoomCommand}"
+                        Content="Back to create room" />
+            </StackPanel>
+        </sharedControls:RoomFormLayout.ActionContent>
+    </sharedControls:RoomFormLayout>
 </UserControl>
 

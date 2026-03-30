@@ -3,6 +3,7 @@ using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Desktop.Navigation;
 using BOTC.Presentation.Desktop.Rooms;
 using BOTC.Presentation.Desktop.Rooms.RoomLobby;
+using BOTC.Presentation.Desktop.Rooms.Shared;
 using BOTC.Presentation.Desktop.Session;
 
 namespace BOTC.Presentation.Desktop.Tests.Rooms.RoomLobby;
@@ -31,6 +32,8 @@ public sealed class RoomLobbyViewModelTests
         Assert.Equal(2, viewModel.Players.Count);
         Assert.Equal("Alice", viewModel.Players[1].DisplayName);
         Assert.Equal("AB12CD", realtimeClient.SubscribedRoomCodes.Single());
+        Assert.True(viewModel.HasRealtimeSubscription);
+        Assert.Equal("Realtime updates active", viewModel.RealtimeStateText);
     }
 
     [Fact]
@@ -89,6 +92,8 @@ public sealed class RoomLobbyViewModelTests
         Assert.Single(viewModel.Players);
         Assert.Equal("Host", viewModel.Players[0].DisplayName);
         Assert.Equal("Room was not found. Showing the last loaded data.", viewModel.ErrorMessage);
+        Assert.Equal(ScreenMessageKind.Error, viewModel.ScreenMessageKind);
+        Assert.True(viewModel.HasScreenMessage);
     }
 
     [Fact]
@@ -112,6 +117,7 @@ public sealed class RoomLobbyViewModelTests
         Assert.Equal(playerId, apiClient.LastLeaveRequest!.PlayerId);
         Assert.Equal(1, navigationService.NavigateToCreateRoomCallCount);
         Assert.Equal("You left the room.", viewModel.ErrorMessage);
+        Assert.Equal(ScreenMessageKind.Info, viewModel.ScreenMessageKind);
         Assert.False(sessionService.HasActiveSession);
         Assert.Empty(viewModel.Players);
         Assert.Equal(["AB12CD"], realtimeClient.UnsubscribedRoomCodes);
@@ -136,6 +142,7 @@ public sealed class RoomLobbyViewModelTests
 
         Assert.Equal(1, navigationService.NavigateToCreateRoomCallCount);
         Assert.Equal("The room was closed.", viewModel.ErrorMessage);
+        Assert.Equal(ScreenMessageKind.Info, viewModel.ScreenMessageKind);
         Assert.Empty(viewModel.Players);
         Assert.Equal(["AB12CD"], realtimeClient.UnsubscribedRoomCodes);
     }

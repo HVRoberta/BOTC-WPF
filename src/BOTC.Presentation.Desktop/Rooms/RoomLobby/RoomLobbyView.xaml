@@ -4,138 +4,167 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:roomLobby="clr-namespace:BOTC.Presentation.Desktop.Rooms.RoomLobby"
+             xmlns:sharedControls="clr-namespace:BOTC.Presentation.Desktop.Rooms.Shared.Controls"
              mc:Ignorable="d"
-             d:DesignHeight="360"
-             d:DesignWidth="420">
-    <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-    </UserControl.Resources>
-
+             d:DesignHeight="560"
+             d:DesignWidth="760">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="12" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="12" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="12" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="8" />
+            <RowDefinition Height="16" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="12" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="12" />
+            <RowDefinition Height="16" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
+        <Border Style="{StaticResource RoomScreenCardStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="16" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="16" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="16" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-            <TextBlock Grid.Column="0"
-                       FontSize="22"
-                       FontWeight="SemiBold"
-                       Text="Room Lobby" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-            <Button Grid.Column="1"
-                    Height="34"
-                    Padding="20,0"
-                    Command="{Binding RefreshCommand}"
-                    Content="Refresh" />
-        </Grid>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Style="{StaticResource RoomScreenTitleTextStyle}"
+                                   Text="Room lobby" />
+                        <TextBlock Style="{StaticResource RoomScreenSubtitleTextStyle}"
+                                   Text="Manage the room, monitor live lobby updates, and keep players ready for the next game flow." />
+                    </StackPanel>
 
-        <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+                    <Button Grid.Column="1"
+                            VerticalAlignment="Top"
+                            Style="{StaticResource RoomSecondaryButtonStyle}"
+                            Command="{Binding RefreshCommand}"
+                            Content="Refresh now" />
+                </Grid>
 
-            <StackPanel Grid.Column="0">
-                <TextBlock FontWeight="SemiBold" Text="Room code" />
-                <TextBlock Margin="0,4,0,0" Text="{Binding RoomCode}" />
-            </StackPanel>
+                <WrapPanel Grid.Row="2">
+                    <Border Style="{StaticResource RoomStatusBadgeBorderStyle}">
+                        <TextBlock Style="{StaticResource RoomStatusBadgeTextStyle}"
+                                   Text="{Binding RoomCode, StringFormat=Room {0}}" />
+                    </Border>
 
-            <StackPanel Grid.Column="1" Margin="16,0,0,0">
-                <TextBlock FontWeight="SemiBold" Text="Status" />
-                <TextBlock Margin="0,4,0,0" Text="{Binding RoomStatus}" />
-            </StackPanel>
-        </Grid>
+                    <Border Style="{StaticResource RoomStatusBadgeBorderStyle}">
+                        <TextBlock Style="{StaticResource RoomStatusBadgeTextStyle}"
+                                   Text="{Binding RoomStatus}" />
+                    </Border>
 
-        <StackPanel Grid.Row="4">
-            <TextBlock Foreground="Gray"
-                       Text="Loading room lobby..."
-                       Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            <ProgressBar Margin="0,6,0,0"
-                         Height="8"
-                         IsIndeterminate="True"
-                         Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
-        </StackPanel>
+                    <Border Style="{StaticResource RoomStatusBadgeBorderStyle}">
+                        <TextBlock Style="{StaticResource RoomStatusBadgeTextStyle}"
+                                   Text="{Binding RealtimeStateText}" />
+                    </Border>
+                </WrapPanel>
 
-        <DockPanel Grid.Row="6" LastChildFill="False">
-            <TextBlock DockPanel.Dock="Left"
-                       FontWeight="SemiBold"
-                       Text="Players" />
-            <TextBlock DockPanel.Dock="Right"
-                       Foreground="Gray"
-                       Text="Refreshing lobby..."
-                       Visibility="{Binding IsRefreshing, Converter={StaticResource BooleanToVisibilityConverter}}" />
-        </DockPanel>
+                <sharedControls:StateBanner Grid.Row="4"
+                                            Message="{Binding ScreenMessage}"
+                                            Kind="{Binding ScreenMessageKind}"
+                                            Show="{Binding HasScreenMessage}" />
 
-        <ListBox Grid.Row="8"
-                 Margin="0,0,0,8"
-                 ItemsSource="{Binding Players}">
-            <ListBox.ItemTemplate>
-                <DataTemplate DataType="{x:Type roomLobby:LobbyPlayerItemViewModel}">
-                    <Grid Margin="0,2,0,2">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+                <sharedControls:BusyIndicator Grid.Row="6"
+                                              Text="{Binding BusyText}"
+                                              IsBusy="{Binding IsBusy}" />
+            </Grid>
+        </Border>
 
-                        <TextBlock Grid.Column="0" Text="{Binding DisplayName}" />
-                        <TextBlock Grid.Column="1"
-                                   Margin="8,0,0,0"
-                                   Foreground="Gray"
-                                   Text="{Binding RoleLabel}" />
-                    </Grid>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+        <Border Grid.Row="2"
+                Style="{StaticResource RoomSectionCardStyle}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="16" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="10"
-                   Foreground="IndianRed"
-                   Text="{Binding ErrorMessage}"
-                   TextWrapping="Wrap" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-        <StackPanel Grid.Row="12"
-                    Orientation="Horizontal">
-            <Button Height="34"
-                    Width="120"
-                    HorizontalAlignment="Left"
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Style="{StaticResource RoomSectionTitleTextStyle}"
+                                   Text="Players" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Style="{StaticResource RoomMutedTextStyle}"
+                                   Text="{Binding Players.Count, StringFormat=Players currently in lobby: {0}}" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="1"
+                               VerticalAlignment="Bottom"
+                               Style="{StaticResource RoomMutedTextStyle}"
+                               Text="Realtime and manual refresh stay in sync." />
+                </Grid>
+
+                <ScrollViewer Grid.Row="2"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Players}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type roomLobby:LobbyPlayerItemViewModel}">
+                                <Border Style="{StaticResource RoomPlayerCardStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock FontSize="15"
+                                                       Text="{Binding DisplayName}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="FontWeight" Value="Normal" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsHost}" Value="True">
+                                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+
+                                            <TextBlock Margin="0,6,0,0"
+                                                       Style="{StaticResource RoomMutedTextStyle}"
+                                                       Text="Room host"
+                                                       Visibility="{Binding IsHost, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        </StackPanel>
+
+                                        <Border Grid.Column="1"
+                                                Margin="12,0,0,0"
+                                                Style="{StaticResource RoomStatusBadgeBorderStyle}"
+                                                Visibility="{Binding IsHost, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <TextBlock Style="{StaticResource RoomStatusBadgeTextStyle}"
+                                                       Text="Host" />
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="4"
+                    Style="{StaticResource RoomActionRowStyle}">
+            <Button Margin="0,0,12,0"
+                    Style="{StaticResource RoomDangerButtonStyle}"
                     Command="{Binding LeaveRoomCommand}"
                     Content="Leave room" />
 
-            <Button Margin="12,0,0,0"
-                    Height="34"
-                    Width="170"
-                    HorizontalAlignment="Left"
+            <Button Style="{StaticResource RoomSecondaryButtonStyle}"
                     Command="{Binding BackToCreateRoomCommand}"
-                    Content="Create another room" />
-
-            <ProgressBar Margin="12,13,0,13"
-                         Width="120"
-                         Height="8"
-                         IsIndeterminate="True"
-                         VerticalAlignment="Center"
-                         Visibility="{Binding IsRefreshing, Converter={StaticResource BooleanToVisibilityConverter}}" />
-
-            <TextBlock Margin="12,0,0,0"
-                       VerticalAlignment="Center"
-                       Foreground="Gray"
-                       Text="Leaving room..."
-                       Visibility="{Binding IsLeaving, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    Content="Back to room setup" />
         </StackPanel>
     </Grid>
 </UserControl>
