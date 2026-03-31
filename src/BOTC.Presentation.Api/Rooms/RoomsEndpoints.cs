@@ -2,6 +2,8 @@ using BOTC.Application.Features.Rooms.CreateRoom;
 using BOTC.Application.Features.Rooms.GetRoomLobby;
 using BOTC.Application.Features.Rooms.JoinRoom;
 using BOTC.Application.Features.Rooms.LeaveRoom;
+using BOTC.Application.Features.Rooms.SetPlayerReady;
+using BOTC.Application.Features.Rooms.StartGame;
 using BOTC.Contracts.Rooms;
 using Microsoft.AspNetCore.Mvc;
 using BOTC.Presentation.Api.Rooms.Realtime;
@@ -41,6 +43,22 @@ public static class RoomsEndpoints
             .Produces<GetRoomLobbyResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound);
+
+        endpoints.MapPost("/api/rooms/{roomCode}/ready", SetPlayerReadyAsync)
+            .WithName("SetPlayerReady")
+            .WithTags("Rooms")
+            .Produces<SetPlayerReadyResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
+        endpoints.MapPost("/api/rooms/{roomCode}/start", StartGameAsync)
+            .WithName("StartGame")
+            .WithTags("Rooms")
+            .Produces<StartGameResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         return endpoints;
     }
@@ -247,6 +265,85 @@ public static class RoomsEndpoints
                 Detail = exception.Message,
                 Status = StatusCodes.Status400BadRequest
             });
+        }
+    }
+
+    private static async Task<IResult> SetPlayerReadyAsync(
+        string roomCode,
+        SetPlayerReadyRequest request,
+        SetPlayerReadyHandler handler,
+        IRoomLobbyNotifier roomLobbyNotifier,
+        CancellationToken cancellationToken)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.PlayerId))
+        {
+            return RoomProblemResults.BadRequest("Invalid ready request.", "PlayerId is required.");
+        }
+
+        try
+        {
+            var command = SetPlayerReadyMappings.ToCommand(roomCode, request);
+            var result = await handler.HandleAsync(command, cancellationToken);
+            var response = SetPlayerReadyMappings.ToResponse(result);
+
+            await roomLobbyNotifier.NotifyLobbyUpdatedAsync(response.RoomCode, CancellationToken.None);
+
+            return Results.Ok(response);
+        }
+        catch (RoomSetPlayerReadyRoomNotFoundException exception)
+        {
+            return RoomProblemResults.NotFound("Room not found.", exception.Message);
+        }
+        catch (RoomSetPlayerReadyPlayerNotFoundException exception)
+        {
+            return RoomProblemResults.NotFound("Player not found.", exception.Message);
+        }
+        catch (RoomSetPlayerReadyConflictException exception)
+        {
+            return RoomProblemResults.Conflict("Unable to update player readiness.", exception.Message);
+        }
+        catch (ArgumentException exception)
+        {
+            return RoomProblemResults.BadRequest("Invalid ready request.", exception.Message);
+        }
+    }
+
+    private static async Task<IResult> StartGameAsync(
+        string roomCode,
+        StartGameRequest request,
+        StartGameHandler handler,
+        IRoomLobbyNotifier roomLobbyNotifier,
+        CancellationToken cancellationToken)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.StarterPlayerId))
+        {
+            return RoomProblemResults.BadRequest("Invalid start game request.", "StarterPlayerId is required.");
+        }
+
+        try
+        {
+            var command = StartGameMappings.ToCommand(roomCode, request);
+            var result = await handler.HandleAsync(command, cancellationToken);
+            var response = StartGameMappings.ToResponse(result);
+
+            if (response.IsStarted)
+            {
+                await roomLobbyNotifier.NotifyLobbyUpdatedAsync(response.RoomCode, CancellationToken.None);
+            }
+
+            return Results.Ok(response);
+        }
+        catch (RoomStartGameRoomNotFoundException exception)
+        {
+            return RoomProblemResults.NotFound("Room not found.", exception.Message);
+        }
+        catch (RoomStartGameConflictException exception)
+        {
+            return RoomProblemResults.Conflict("Unable to start game.", exception.Message);
+        }
+        catch (ArgumentException exception)
+        {
+            return RoomProblemResults.BadRequest("Invalid start game request.", exception.Message);
         }
     }
 }

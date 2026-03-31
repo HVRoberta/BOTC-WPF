@@ -9,13 +9,15 @@ public sealed class RoomPlayer
         string displayName,
         string normalizedDisplayName,
         RoomPlayerRole role,
-        DateTime joinedAtUtc)
+        DateTime joinedAtUtc,
+        bool isReady)
     {
         Id = id;
         DisplayName = displayName;
         NormalizedDisplayName = normalizedDisplayName;
         Role = role;
         JoinedAtUtc = joinedAtUtc;
+        IsReady = isReady;
     }
 
     public RoomPlayerId Id { get; }
@@ -28,11 +30,14 @@ public sealed class RoomPlayer
 
     public DateTime JoinedAtUtc { get; }
 
+    public bool IsReady { get; }
+
     public static RoomPlayer Create(
         RoomPlayerId id,
         string displayName,
         RoomPlayerRole role,
-        DateTime joinedAtUtc)
+        DateTime joinedAtUtc,
+        bool isReady = false)
     {
         ValidateRole(role);
 
@@ -40,7 +45,7 @@ public sealed class RoomPlayer
         var trimmedDisplayName = displayName.Trim();
         var utcJoinedAt = EnsureUtc(joinedAtUtc, nameof(joinedAtUtc));
 
-        return new RoomPlayer(id, trimmedDisplayName, normalizedDisplayName, role, utcJoinedAt);
+        return new RoomPlayer(id, trimmedDisplayName, normalizedDisplayName, role, utcJoinedAt, isReady);
     }
 
     public static RoomPlayer Rehydrate(
@@ -48,7 +53,8 @@ public sealed class RoomPlayer
         string displayName,
         string normalizedDisplayName,
         RoomPlayerRole role,
-        DateTime joinedAtUtc)
+        DateTime joinedAtUtc,
+        bool isReady)
     {
         ValidateRole(role);
 
@@ -61,7 +67,22 @@ public sealed class RoomPlayer
 
         var utcJoinedAt = EnsureUtc(joinedAtUtc, nameof(joinedAtUtc));
 
-        return new RoomPlayer(id, trimmedDisplayName, normalizedDisplayName, role, utcJoinedAt);
+        return new RoomPlayer(id, trimmedDisplayName, normalizedDisplayName, role, utcJoinedAt, isReady);
+    }
+
+    public RoomPlayer WithRole(RoomPlayerRole role)
+    {
+        return Create(Id, DisplayName, role, JoinedAtUtc, IsReady);
+    }
+
+    public RoomPlayer WithDisplayName(string displayName)
+    {
+        return Create(Id, displayName, Role, JoinedAtUtc, IsReady);
+    }
+
+    public RoomPlayer WithReadyState(bool isReady)
+    {
+        return Create(Id, DisplayName, Role, JoinedAtUtc, isReady);
     }
 
     public static string NormalizeDisplayName(string displayName)

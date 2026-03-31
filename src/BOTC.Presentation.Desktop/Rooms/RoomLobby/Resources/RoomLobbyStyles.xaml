@@ -125,10 +125,37 @@
         <Setter Property="Margin" Value="0,2,0,0" />
     </Style>
 
+    <Style x:Key="LobbyPlayerReadyBadgeBorderStyle" TargetType="Border" BasedOn="{StaticResource StatusBadgeBorderStyle}">
+        <Setter Property="Margin" Value="8,0,0,0" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsReady}" Value="True">
+                <Setter Property="Background" Value="{StaticResource BrushInfoBackground}" />
+                <Setter Property="BorderBrush" Value="{StaticResource BrushInfoForeground}" />
+                <Setter Property="BorderThickness" Value="1" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsReady}" Value="False">
+                <Setter Property="Background" Value="{StaticResource BrushSurface}" />
+                <Setter Property="BorderBrush" Value="{StaticResource BrushBorderSubtle}" />
+                <Setter Property="BorderThickness" Value="1" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="LobbyPlayerReadyBadgeTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BadgeTextStyle}">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsReady}" Value="True">
+                <Setter Property="Foreground" Value="{StaticResource BrushInfoForeground}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsReady}" Value="False">
+                <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
     <Style x:Key="LobbyPlayerSeatTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BadgeTextStyle}">
         <Style.Triggers>
             <DataTrigger Binding="{Binding IsCurrentUser}" Value="True">
-                <Setter Property="Foreground" Value="White" />
+                <Setter Property="Foreground" Value="{StaticResource BrushAccentForeground}" />
             </DataTrigger>
         </Style.Triggers>
     </Style>

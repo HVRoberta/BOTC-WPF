@@ -55,6 +55,16 @@ public sealed class JoinRoomViewModelTests
             throw new NotSupportedException();
         }
 
+        public Task<SetPlayerReadyResponse> SetPlayerReadyAsync(string roomCode, SetPlayerReadyRequest request, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<StartGameResponse> StartGameAsync(string roomCode, StartGameRequest request, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<GetRoomLobbyResponse> GetRoomLobbyAsync(string roomCode, CancellationToken cancellationToken)
         {
             throw new NotSupportedException();

@@ -2,6 +2,7 @@
 
 public enum RoomStatus
 {
-    WaitingForPlayers = 1
+    WaitingForPlayers = 1,
+    InProgress = 2
 }
 

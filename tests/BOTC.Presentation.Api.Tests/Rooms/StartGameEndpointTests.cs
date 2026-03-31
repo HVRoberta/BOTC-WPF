@@ -1,7 +1,7 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
-using BOTC.Application.Features.Rooms.LeaveRoom;
+using BOTC.Application.Features.Rooms.StartGame;
 using BOTC.Contracts.Rooms;
 using BOTC.Domain.Rooms;
 using BOTC.Presentation.Api.Rooms;
@@ -11,20 +11,20 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace BOTC.Presentation.Api.Tests.Rooms;
 
-public sealed class LeaveRoomEndpointTests
+public sealed class StartGameEndpointTests
 {
     [Fact]
-    public async Task LeaveRoomAsync_WhenHostLeavesAndPlayersRemain_Returns200AndNotifiesLobbyUpdated()
+    public async Task StartGameAsync_WhenStartSucceeds_Returns200AndNotifiesLobbyUpdated()
     {
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
-        var successor = room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
-        room.JoinPlayer("Bob", DateTime.UtcNow.AddSeconds(2));
-        var handler = new LeaveRoomHandler(new FakeRoomLeaveRepository(room));
+        var player = room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
+        room.SetPlayerReady(player.Id, true);
+        var handler = new StartGameHandler(new FakeStartGameRepository(room));
         var notifier = new FakeRoomLobbyNotifier();
 
-        var result = await InvokeLeaveRoomAsync(
+        var result = await InvokeStartGameAsync(
             "AB12CD",
-            new LeaveRoomRequest(room.HostPlayerId.Value.ToString()),
+            new StartGameRequest(room.HostPlayerId.Value.ToString()),
             handler,
             notifier,
             CancellationToken.None);
@@ -33,25 +33,25 @@ public sealed class LeaveRoomEndpointTests
 
         Assert.Equal(StatusCodes.Status200OK, response.StatusCode);
         Assert.Equal(["AB12CD"], notifier.UpdatedRoomCodes);
-        Assert.Empty(notifier.ClosedRoomCodes);
 
         using var document = JsonDocument.Parse(response.Body);
         var root = document.RootElement;
-        Assert.Equal("AB12CD", root.GetProperty("roomCode").GetString());
-        Assert.False(root.GetProperty("roomWasRemoved").GetBoolean());
-        Assert.Equal(successor.Id.Value.ToString(), root.GetProperty("newHostPlayerId").GetString());
+        Assert.True(root.GetProperty("isStarted").GetBoolean());
+        Assert.Equal((int)RoomStatus.InProgress, root.GetProperty("roomStatus").GetInt32());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("blockedReason").ValueKind);
     }
 
     [Fact]
-    public async Task LeaveRoomAsync_WhenLastPlayerLeaves_Returns200AndNotifiesLobbyClosed()
+    public async Task StartGameAsync_WhenStartIsBlocked_Returns200WithoutLobbyUpdate()
     {
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
-        var handler = new LeaveRoomHandler(new FakeRoomLeaveRepository(room));
+        room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
+        var handler = new StartGameHandler(new FakeStartGameRepository(room));
         var notifier = new FakeRoomLobbyNotifier();
 
-        var result = await InvokeLeaveRoomAsync(
+        var result = await InvokeStartGameAsync(
             "AB12CD",
-            new LeaveRoomRequest(room.HostPlayerId.Value.ToString()),
+            new StartGameRequest(room.HostPlayerId.Value.ToString()),
             handler,
             notifier,
             CancellationToken.None);
@@ -60,41 +60,46 @@ public sealed class LeaveRoomEndpointTests
 
         Assert.Equal(StatusCodes.Status200OK, response.StatusCode);
         Assert.Empty(notifier.UpdatedRoomCodes);
-        Assert.Equal(["AB12CD"], notifier.ClosedRoomCodes);
 
         using var document = JsonDocument.Parse(response.Body);
         var root = document.RootElement;
-        Assert.True(root.GetProperty("roomWasRemoved").GetBoolean());
-        Assert.Equal(JsonValueKind.Null, root.GetProperty("newHostPlayerId").ValueKind);
+        Assert.False(root.GetProperty("isStarted").GetBoolean());
+        Assert.Equal((int)StartGameBlockedReasonContract.NonHostPlayersNotReady, root.GetProperty("blockedReason").GetInt32());
+        Assert.Equal((int)RoomStatus.WaitingForPlayers, root.GetProperty("roomStatus").GetInt32());
     }
 
     [Fact]
-    public async Task LeaveRoomAsync_WhenPlayerIdMissing_Returns400()
+    public async Task StartGameAsync_WhenStarterPlayerIdMissing_Returns400AndDoesNotNotify()
     {
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
-        var handler = new LeaveRoomHandler(new FakeRoomLeaveRepository(room));
+        var handler = new StartGameHandler(new FakeStartGameRepository(room));
         var notifier = new FakeRoomLobbyNotifier();
 
-        var result = await InvokeLeaveRoomAsync("AB12CD", new LeaveRoomRequest(" "), handler, notifier, CancellationToken.None);
+        var result = await InvokeStartGameAsync(
+            "AB12CD",
+            new StartGameRequest("  "),
+            handler,
+            notifier,
+            CancellationToken.None);
+
         var response = await ExecuteResultAsync(result);
 
         Assert.Equal(StatusCodes.Status400BadRequest, response.StatusCode);
         Assert.Empty(notifier.UpdatedRoomCodes);
-        Assert.Empty(notifier.ClosedRoomCodes);
     }
 
-    private static async Task<IResult> InvokeLeaveRoomAsync(
+    private static async Task<IResult> InvokeStartGameAsync(
         string roomCode,
-        LeaveRoomRequest request,
-        LeaveRoomHandler handler,
+        StartGameRequest request,
+        StartGameHandler handler,
         IRoomLobbyNotifier notifier,
         CancellationToken cancellationToken)
     {
         var method = typeof(RoomsEndpoints).GetMethod(
-            "LeaveRoomAsync",
+            "StartGameAsync",
             BindingFlags.Static | BindingFlags.NonPublic,
             null,
-            [typeof(string), typeof(LeaveRoomRequest), typeof(LeaveRoomHandler), typeof(IRoomLobbyNotifier), typeof(CancellationToken)],
+            [typeof(string), typeof(StartGameRequest), typeof(StartGameHandler), typeof(IRoomLobbyNotifier), typeof(CancellationToken)],
             null);
 
         Assert.NotNull(method);
@@ -131,28 +136,22 @@ public sealed class LeaveRoomEndpointTests
 
     private sealed record HttpExecutionResult(int StatusCode, string Body);
 
-    private sealed class FakeRoomLeaveRepository : IRoomLeaveRepository
+    private sealed class FakeStartGameRepository : IRoomStartGameRepository
     {
-        private readonly Room? _room;
+        private readonly Room? room;
 
-        public FakeRoomLeaveRepository(Room? room)
+        public FakeStartGameRepository(Room? room)
         {
-            _room = room;
+            this.room = room;
         }
 
         public Task<Room?> GetByCodeAsync(RoomCode roomCode, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(_room);
+            return Task.FromResult(room);
         }
 
         public Task<bool> TrySaveAsync(Room room, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(true);
-        }
-
-        public Task<bool> TryDeleteAsync(RoomId roomId, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(true);
@@ -163,8 +162,6 @@ public sealed class LeaveRoomEndpointTests
     {
         public List<string> UpdatedRoomCodes { get; } = [];
 
-        public List<string> ClosedRoomCodes { get; } = [];
-
         public Task NotifyLobbyUpdatedAsync(string roomCode, CancellationToken cancellationToken)
         {
             UpdatedRoomCodes.Add(roomCode);
@@ -173,8 +170,8 @@ public sealed class LeaveRoomEndpointTests
 
         public Task NotifyLobbyClosedAsync(string roomCode, CancellationToken cancellationToken)
         {
-            ClosedRoomCodes.Add(roomCode);
-            return Task.CompletedTask;
+            throw new NotSupportedException();
         }
     }
 }
+

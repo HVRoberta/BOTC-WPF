@@ -19,8 +19,8 @@ public sealed class GetRoomLobbyEndpointTests
         repository.SeedLobby(new GetRoomLobbyResult(
             new RoomCode("AB12CD"),
             [
-                new LobbyPlayerResult(new RoomPlayerId(Guid.Parse("11111111-1111-1111-1111-111111111111")), "Host", RoomPlayerRole.Host),
-                new LobbyPlayerResult(new RoomPlayerId(Guid.Parse("22222222-2222-2222-2222-222222222222")), "Alice", RoomPlayerRole.Player)
+                new LobbyPlayerResult(new RoomPlayerId(Guid.Parse("11111111-1111-1111-1111-111111111111")), "Host", RoomPlayerRole.Host, false),
+                new LobbyPlayerResult(new RoomPlayerId(Guid.Parse("22222222-2222-2222-2222-222222222222")), "Alice", RoomPlayerRole.Player, true)
             ],
             RoomStatus.WaitingForPlayers));
 
@@ -43,8 +43,10 @@ public sealed class GetRoomLobbyEndpointTests
         Assert.Equal(2, players.Length);
         Assert.Equal("Host", players[0].GetProperty("displayName").GetString());
         Assert.True(players[0].GetProperty("isHost").GetBoolean());
+        Assert.False(players[0].GetProperty("isReady").GetBoolean());
         Assert.Equal("Alice", players[1].GetProperty("displayName").GetString());
         Assert.False(players[1].GetProperty("isHost").GetBoolean());
+        Assert.True(players[1].GetProperty("isReady").GetBoolean());
     }
 
     [Fact]
@@ -63,6 +65,25 @@ public sealed class GetRoomLobbyEndpointTests
         var root = document.RootElement;
         Assert.Equal("Invalid room code.", root.GetProperty("title").GetString());
         Assert.Equal(StatusCodes.Status400BadRequest, root.GetProperty("status").GetInt32());
+    }
+
+    [Fact]
+    public async Task GetRoomLobbyAsync_WhenRoomIsInProgress_ReturnsInProgressStatusValue()
+    {
+        var repository = new FakeRoomLobbyQueryService();
+        repository.SeedLobby(new GetRoomLobbyResult(
+            new RoomCode("AB12CD"),
+            [new LobbyPlayerResult(new RoomPlayerId(Guid.NewGuid()), "Host", RoomPlayerRole.Host, false)],
+            RoomStatus.InProgress));
+
+        var handler = new GetRoomLobbyHandler(repository);
+
+        var result = await InvokeGetRoomLobbyAsync("AB12CD", handler, CancellationToken.None);
+        var response = await ExecuteResultAsync(result);
+
+        Assert.Equal(StatusCodes.Status200OK, response.StatusCode);
+        using var document = JsonDocument.Parse(response.Body);
+        Assert.Equal((int)RoomStatus.InProgress, document.RootElement.GetProperty("status").GetInt32());
     }
 
     [Fact]

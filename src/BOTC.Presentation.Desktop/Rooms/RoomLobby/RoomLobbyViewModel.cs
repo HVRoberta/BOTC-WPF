@@ -25,6 +25,7 @@ public partial class RoomLobbyViewModel(
     private bool _isLobbyActive;
     private bool _isRealtimeHandlerAttached;
     private bool _refreshRequested;
+    private bool _refreshShouldPreserveScreenMessage;
     private bool _isRefreshLoopRunning;
     private RealtimeConnectionState _realtimeConnectionState = RealtimeConnectionState.Disconnected;
 
@@ -56,6 +57,8 @@ public partial class RoomLobbyViewModel(
     [NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
     [NotifyCanExecuteChangedFor(nameof(LeaveRoomCommand))]
     [NotifyCanExecuteChangedFor(nameof(BackToCreateRoomCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ToggleReadyCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StartGameCommand))]
     [NotifyPropertyChangedFor(nameof(HasAnyStatusUpdate))]
     private bool _isLoading;
 
@@ -63,6 +66,8 @@ public partial class RoomLobbyViewModel(
     [NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
     [NotifyCanExecuteChangedFor(nameof(LeaveRoomCommand))]
     [NotifyCanExecuteChangedFor(nameof(BackToCreateRoomCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ToggleReadyCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StartGameCommand))]
     [NotifyPropertyChangedFor(nameof(HasAnyStatusUpdate))]
     private bool _isRefreshing;
 
@@ -70,8 +75,28 @@ public partial class RoomLobbyViewModel(
     [NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
     [NotifyCanExecuteChangedFor(nameof(LeaveRoomCommand))]
     [NotifyCanExecuteChangedFor(nameof(BackToCreateRoomCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ToggleReadyCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StartGameCommand))]
     [NotifyPropertyChangedFor(nameof(HasAnyStatusUpdate))]
     private bool _isLeaving;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
+    [NotifyCanExecuteChangedFor(nameof(LeaveRoomCommand))]
+    [NotifyCanExecuteChangedFor(nameof(BackToCreateRoomCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ToggleReadyCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StartGameCommand))]
+    [NotifyPropertyChangedFor(nameof(HasAnyStatusUpdate))]
+    private bool _isTogglingReady;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
+    [NotifyCanExecuteChangedFor(nameof(LeaveRoomCommand))]
+    [NotifyCanExecuteChangedFor(nameof(BackToCreateRoomCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ToggleReadyCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StartGameCommand))]
+    [NotifyPropertyChangedFor(nameof(HasAnyStatusUpdate))]
+    private bool _isStartingGame;
 
     public string ErrorMessage => ScreenMessage;
 
@@ -91,14 +116,30 @@ public partial class RoomLobbyViewModel(
 
     public string HostDisplayName => _snapshotState.HostDisplayName;
 
+    public bool IsCurrentUserHost => _snapshotState.IsCurrentUserHost;
+
+    public bool IsCurrentUserReady => _snapshotState.IsCurrentUserReady;
+
+    public string CurrentUserReadyStateText => _snapshotState.CurrentUserReadyStateSummary;
+
+    public string NonHostReadinessSummary => _snapshotState.NonHostReadinessSummary;
+
+    public bool CanStartGame => CanStartGameCore();
+
+    public string StartEligibilityHint => BuildStartEligibilityHint();
+
     public string PlayerCountSummary => _snapshotState.PlayerCountSummary;
 
     public string LastSuccessfulRefreshText => _snapshotState.LastSuccessfulRefreshText;
 
-    public bool IsBusy => IsLoading || IsRefreshing || IsLeaving;
+    public bool IsBusy => IsLoading || IsRefreshing || IsLeaving || IsTogglingReady || IsStartingGame;
 
     public string BusyText => IsLeaving
         ? "Leaving room..."
+        : IsStartingGame
+            ? "Starting game..."
+            : IsTogglingReady
+                ? "Updating readiness..."
         : IsLoading
             ? "Loading room lobby..."
             : IsRefreshing
@@ -119,7 +160,12 @@ public partial class RoomLobbyViewModel(
             _ => "Disconnected"
         };
 
-    private bool CanBackToCreateRoom() => !IsLoading && !IsRefreshing && !IsLeaving;
+    private bool CanBackToCreateRoom() =>
+        !IsLoading
+        && !IsRefreshing
+        && !IsLeaving
+        && !IsTogglingReady
+        && !IsStartingGame;
 
     [RelayCommand(CanExecute = nameof(CanBackToCreateRoom), AllowConcurrentExecutions = false)]
     private async Task BackToCreateRoomAsync()
@@ -198,7 +244,9 @@ public partial class RoomLobbyViewModel(
         !string.IsNullOrWhiteSpace(_currentRoomCode)
         && !IsLoading
         && !IsRefreshing
-        && !IsLeaving;
+        && !IsLeaving
+        && !IsTogglingReady
+        && !IsStartingGame;
 
     [RelayCommand(CanExecute = nameof(CanRefresh), AllowConcurrentExecutions = false)]
     private Task RefreshAsync()
@@ -211,7 +259,142 @@ public partial class RoomLobbyViewModel(
         && !string.IsNullOrWhiteSpace(_currentPlayerId)
         && !IsLoading
         && !IsRefreshing
-        && !IsLeaving;
+        && !IsLeaving
+        && !IsTogglingReady
+        && !IsStartingGame;
+
+    private bool CanToggleReady() =>
+        !string.IsNullOrWhiteSpace(_currentRoomCode)
+        && !string.IsNullOrWhiteSpace(_currentPlayerId)
+        && _snapshotState.CanCurrentUserToggleReady
+        && !IsLoading
+        && !IsRefreshing
+        && !IsLeaving
+        && !IsTogglingReady
+        && !IsStartingGame;
+
+    [RelayCommand(CanExecute = nameof(CanToggleReady), AllowConcurrentExecutions = false)]
+    private async Task ToggleReadyAsync()
+    {
+        ClearScreenMessage();
+        if (!TryGetReadySessionContext(out var currentRoomCode, out var currentPlayerId))
+        {
+            ShowErrorMessage("No active session found. Join or create a room first.");
+            return;
+        }
+
+        if (_snapshotState.IsCurrentUserHost)
+        {
+            ShowScreenMessage("Host does not need to toggle ready state.", ScreenMessageKind.Info);
+            return;
+        }
+
+        var desiredReadyState = !IsCurrentUserReady;
+        IsTogglingReady = true;
+
+        try
+        {
+            var response = await roomsApiClient.SetPlayerReadyAsync(
+                currentRoomCode,
+                new SetPlayerReadyRequest(currentPlayerId, desiredReadyState),
+                CancellationToken.None);
+
+            ShowScreenMessage(
+                response.IsReady
+                    ? "You are marked as ready."
+                    : "You are marked as not ready.",
+                ScreenMessageKind.Info);
+
+            await QueueLobbyRefreshAsync(CancellationToken.None, preserveScreenMessage: true);
+        }
+        catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.BadRequest)
+        {
+            ShowErrorMessage("Ready request was invalid.");
+        }
+        catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
+        {
+            ShowErrorMessage("Unable to update readiness because the room or player was not found.");
+        }
+        catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.Conflict)
+        {
+            ShowErrorMessage("Unable to update readiness due to a conflicting room state. Please refresh and try again.");
+        }
+        catch (HttpRequestException)
+        {
+            ShowErrorMessage("Unable to contact the server. Please try again.");
+        }
+        catch (Exception)
+        {
+            ShowErrorMessage("Unexpected error occurred while updating readiness.");
+        }
+        finally
+        {
+            IsTogglingReady = false;
+        }
+    }
+
+    private bool CanStartGameCore() =>
+        _snapshotState.IsEligibleToStart
+        && !IsLoading
+        && !IsRefreshing
+        && !IsLeaving
+        && !IsTogglingReady
+        && !IsStartingGame;
+
+    [RelayCommand(CanExecute = nameof(CanStartGameCore), AllowConcurrentExecutions = false)]
+    private async Task StartGameAsync()
+    {
+        ClearScreenMessage();
+        if (!TryGetReadySessionContext(out var currentRoomCode, out var currentPlayerId))
+        {
+            ShowErrorMessage("No active session found. Join or create a room first.");
+            return;
+        }
+
+        IsStartingGame = true;
+
+        try
+        {
+            var response = await roomsApiClient.StartGameAsync(
+                currentRoomCode,
+                new StartGameRequest(currentPlayerId),
+                CancellationToken.None);
+
+            if (response.IsStarted)
+            {
+                ShowScreenMessage("Game started successfully.", ScreenMessageKind.Info);
+                await QueueLobbyRefreshAsync(CancellationToken.None, preserveScreenMessage: true);
+                return;
+            }
+
+            ShowErrorMessage(BuildStartGameBlockedMessage(response.BlockedReason));
+            await QueueLobbyRefreshAsync(CancellationToken.None, preserveScreenMessage: true);
+        }
+        catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.BadRequest)
+        {
+            ShowErrorMessage("Start game request was invalid.");
+        }
+        catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
+        {
+            ShowErrorMessage("Unable to start game because the room was not found.");
+        }
+        catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.Conflict)
+        {
+            ShowErrorMessage("Unable to start game due to a conflicting room state. Please refresh and try again.");
+        }
+        catch (HttpRequestException)
+        {
+            ShowErrorMessage("Unable to contact the server. Please try again.");
+        }
+        catch (Exception)
+        {
+            ShowErrorMessage("Unexpected error occurred while starting the game.");
+        }
+        finally
+        {
+            IsStartingGame = false;
+        }
+    }
 
     [RelayCommand(CanExecute = nameof(CanLeaveRoom), AllowConcurrentExecutions = false)]
     private async Task LeaveRoomAsync()
@@ -268,6 +451,14 @@ public partial class RoomLobbyViewModel(
         _currentRoomCode = roomCode;
         _currentPlayerId = playerId;
         return true;
+    }
+
+    private bool TryGetReadySessionContext(out string roomCode, out string playerId)
+    {
+        roomCode = NormalizeRoomCode(_currentRoomCode);
+        playerId = NormalizePlayerId(_currentPlayerId);
+        return !string.IsNullOrWhiteSpace(roomCode)
+            && !string.IsNullOrWhiteSpace(playerId);
     }
 
     private async Task HandleMissingSessionBeforeLeaveAsync()
@@ -341,14 +532,14 @@ public partial class RoomLobbyViewModel(
         navigationService.NavigateToCreateRoom();
     }
 
-    private async Task QueueLobbyRefreshAsync(CancellationToken cancellationToken)
+    private async Task QueueLobbyRefreshAsync(CancellationToken cancellationToken, bool preserveScreenMessage = false)
     {
-        await RunOnCapturedContextAsync(() => ProcessQueuedLobbyRefreshAsync(cancellationToken));
+        await RunOnCapturedContextAsync(() => ProcessQueuedLobbyRefreshAsync(cancellationToken, preserveScreenMessage));
     }
 
-    private async Task ProcessQueuedLobbyRefreshAsync(CancellationToken cancellationToken)
+    private async Task ProcessQueuedLobbyRefreshAsync(CancellationToken cancellationToken, bool preserveScreenMessage)
     {
-        RequestLobbyRefresh();
+        RequestLobbyRefresh(preserveScreenMessage);
         if (_isRefreshLoopRunning)
         {
             return;
@@ -357,9 +548,9 @@ public partial class RoomLobbyViewModel(
         _isRefreshLoopRunning = true;
         try
         {
-            while (TryDequeueLobbyRefreshRequest(cancellationToken))
+            while (TryDequeueLobbyRefreshRequest(cancellationToken, out var shouldPreserveScreenMessage))
             {
-                await ExecuteLobbyRefreshAsync(cancellationToken);
+                await ExecuteLobbyRefreshAsync(cancellationToken, shouldPreserveScreenMessage);
             }
         }
         finally
@@ -368,13 +559,15 @@ public partial class RoomLobbyViewModel(
         }
     }
 
-    private void RequestLobbyRefresh()
+    private void RequestLobbyRefresh(bool preserveScreenMessage)
     {
         _refreshRequested = true;
+        _refreshShouldPreserveScreenMessage = _refreshShouldPreserveScreenMessage || preserveScreenMessage;
     }
 
-    private bool TryDequeueLobbyRefreshRequest(CancellationToken cancellationToken)
+    private bool TryDequeueLobbyRefreshRequest(CancellationToken cancellationToken, out bool preserveScreenMessage)
     {
+        preserveScreenMessage = false;
         cancellationToken.ThrowIfCancellationRequested();
         if (!_refreshRequested)
         {
@@ -382,12 +575,17 @@ public partial class RoomLobbyViewModel(
         }
 
         _refreshRequested = false;
+        preserveScreenMessage = _refreshShouldPreserveScreenMessage;
+        _refreshShouldPreserveScreenMessage = false;
         return true;
     }
 
-    private async Task ExecuteLobbyRefreshAsync(CancellationToken cancellationToken)
+    private async Task ExecuteLobbyRefreshAsync(CancellationToken cancellationToken, bool preserveScreenMessage)
     {
-        ClearScreenMessage();
+        if (!preserveScreenMessage)
+        {
+            ClearScreenMessage();
+        }
 
         var preserveCurrentLobbyState = HasLobbyData;
         SetBusyState(preserveCurrentLobbyState);
@@ -481,6 +679,7 @@ public partial class RoomLobbyViewModel(
     {
         _isLobbyActive = false;
         _refreshRequested = false;
+        _refreshShouldPreserveScreenMessage = false;
         DetachRealtimeHandler();
 
         try
@@ -511,6 +710,8 @@ public partial class RoomLobbyViewModel(
 
         RefreshCommand.NotifyCanExecuteChanged();
         LeaveRoomCommand.NotifyCanExecuteChanged();
+        ToggleReadyCommand.NotifyCanExecuteChanged();
+        StartGameCommand.NotifyCanExecuteChanged();
 
         return !string.IsNullOrWhiteSpace(_currentRoomCode)
             && !string.IsNullOrWhiteSpace(_currentPlayerId);
@@ -622,6 +823,8 @@ public partial class RoomLobbyViewModel(
         _snapshotState.ApplyLobbySnapshot(response, _currentPlayerId);
         NotifyLobbySnapshotChanged();
         RefreshCommand.NotifyCanExecuteChanged();
+        ToggleReadyCommand.NotifyCanExecuteChanged();
+        StartGameCommand.NotifyCanExecuteChanged();
     }
 
     private void SetBusyState(bool preserveCurrentLobbyState)
@@ -644,6 +847,18 @@ public partial class RoomLobbyViewModel(
     }
 
     partial void OnIsLeavingChanged(bool value)
+    {
+        _ = value;
+        NotifyBusyPresentationStateChanged();
+    }
+
+    partial void OnIsTogglingReadyChanged(bool value)
+    {
+        _ = value;
+        NotifyBusyPresentationStateChanged();
+    }
+
+    partial void OnIsStartingGameChanged(bool value)
     {
         _ = value;
         NotifyBusyPresentationStateChanged();
@@ -682,6 +897,7 @@ public partial class RoomLobbyViewModel(
     {
         OnPropertyChanged(nameof(IsBusy));
         OnPropertyChanged(nameof(BusyText));
+        OnPropertyChanged(nameof(CanStartGame));
     }
 
     private void NotifyRealtimeStateChanged()
@@ -695,7 +911,13 @@ public partial class RoomLobbyViewModel(
     {
         OnPropertyChanged(nameof(CurrentUserDisplayName));
         OnPropertyChanged(nameof(CurrentUserRole));
+        OnPropertyChanged(nameof(IsCurrentUserHost));
+        OnPropertyChanged(nameof(IsCurrentUserReady));
+        OnPropertyChanged(nameof(CurrentUserReadyStateText));
         OnPropertyChanged(nameof(HostDisplayName));
+        OnPropertyChanged(nameof(NonHostReadinessSummary));
+        OnPropertyChanged(nameof(CanStartGame));
+        OnPropertyChanged(nameof(StartEligibilityHint));
         OnPropertyChanged(nameof(PlayerCountSummary));
         OnPropertyChanged(nameof(LastSuccessfulRefreshText));
     }
@@ -731,6 +953,8 @@ public partial class RoomLobbyViewModel(
         IsLoading = false;
         IsRefreshing = false;
         IsLeaving = false;
+        IsTogglingReady = false;
+        IsStartingGame = false;
         _currentRoomCode = string.Empty;
         _currentPlayerId = string.Empty;
         _realtimeConnectionState = RealtimeConnectionState.Disconnected;
@@ -738,6 +962,46 @@ public partial class RoomLobbyViewModel(
         NotifyRealtimeStateChanged();
         RefreshCommand.NotifyCanExecuteChanged();
         LeaveRoomCommand.NotifyCanExecuteChanged();
+        ToggleReadyCommand.NotifyCanExecuteChanged();
+        StartGameCommand.NotifyCanExecuteChanged();
+    }
+
+    private string BuildStartEligibilityHint()
+    {
+        if (!_snapshotState.IsCurrentUserHost)
+        {
+            return "Only the host can start the game.";
+        }
+
+        if (!_snapshotState.IsWaitingForPlayers)
+        {
+            return "Game has already started.";
+        }
+
+        if (!_snapshotState.HasEnoughPlayersToStart)
+        {
+            return "At least 2 players are required to start.";
+        }
+
+        if (!_snapshotState.AreAllNonHostPlayersReady)
+        {
+            return "All non-host players must be ready before starting.";
+        }
+
+        return "Ready to start the game.";
+    }
+
+    private static string BuildStartGameBlockedMessage(StartGameBlockedReasonContract? blockedReason)
+    {
+        return blockedReason switch
+        {
+            StartGameBlockedReasonContract.StartedByNonHost => "Only the host can start the game.",
+            StartGameBlockedReasonContract.RoomIsNotWaitingForPlayers => "Unable to start because the room is no longer waiting for players.",
+            StartGameBlockedReasonContract.NotEnoughPlayers => "Unable to start because at least 2 players are required.",
+            StartGameBlockedReasonContract.NonHostPlayersNotReady => "Unable to start because not all non-host players are ready.",
+            StartGameBlockedReasonContract.StarterPlayerNotFound => "Unable to start because the starter player was not found.",
+            _ => "Unable to start game right now. Please refresh and try again."
+        };
     }
 
     private static string BuildLobbyErrorMessage(HttpStatusCode? statusCode, bool preserveCurrentLobbyState)

@@ -4,6 +4,7 @@ namespace BOTC.Domain.Rooms;
 
 public sealed class Room
 {
+    public const int MinPlayersToStartGame = 2;
     private const int MaxPlayers = 20;
 
     private readonly List<RoomPlayer> players;
@@ -117,11 +118,7 @@ public sealed class Room
             .First();
 
         var successorIndex = players.FindIndex(player => player.Id == successor.Id);
-        players[successorIndex] = RoomPlayer.Create(
-            successor.Id,
-            successor.DisplayName,
-            RoomPlayerRole.Host,
-            successor.JoinedAtUtc);
+        players[successorIndex] = successor.WithRole(RoomPlayerRole.Host);
 
         EnsurePlayerInvariants(players);
 
@@ -138,9 +135,58 @@ public sealed class Room
             throw new InvalidOperationException("Display name is already in use for this room.");
         }
 
-        var renamedHost = RoomPlayer.Create(host.Id, hostDisplayName, RoomPlayerRole.Host, host.JoinedAtUtc);
+        var renamedHost = host.WithDisplayName(hostDisplayName);
         var hostIndex = players.FindIndex(p => p.Id == host.Id);
         players[hostIndex] = renamedHost;
+    }
+
+    public void SetPlayerReady(RoomPlayerId playerId, bool isReady)
+    {
+        EnsureReadinessChangeAllowed();
+
+        var playerIndex = players.FindIndex(player => player.Id == playerId);
+        if (playerIndex < 0)
+        {
+            throw new RoomSetPlayerReadyPlayerNotFoundException(playerId);
+        }
+
+        players[playerIndex] = players[playerIndex].WithReadyState(isReady);
+    }
+
+    public RoomStartGameOutcome StartGame(RoomPlayerId starterPlayerId)
+    {
+        var starter = players.SingleOrDefault(player => player.Id == starterPlayerId);
+        if (starter is null)
+        {
+            return RoomStartGameOutcome.Blocked(RoomStartGameBlockedReason.StarterPlayerNotFound);
+        }
+
+        if (starter.Role != RoomPlayerRole.Host)
+        {
+            return RoomStartGameOutcome.Blocked(RoomStartGameBlockedReason.StartedByNonHost);
+        }
+
+        if (Status != RoomStatus.WaitingForPlayers)
+        {
+            return RoomStartGameOutcome.Blocked(RoomStartGameBlockedReason.RoomIsNotWaitingForPlayers);
+        }
+
+        if (players.Count < MinPlayersToStartGame)
+        {
+            return RoomStartGameOutcome.Blocked(RoomStartGameBlockedReason.NotEnoughPlayers);
+        }
+
+        var hasUnreadyNonHostPlayer = players.Any(player =>
+            player.Role == RoomPlayerRole.Player
+            && !player.IsReady);
+
+        if (hasUnreadyNonHostPlayer)
+        {
+            return RoomStartGameOutcome.Blocked(RoomStartGameBlockedReason.NonHostPlayersNotReady);
+        }
+
+        Status = RoomStatus.InProgress;
+        return RoomStartGameOutcome.Started();
     }
 
     private void EnsureJoinAllowed()
@@ -148,6 +194,14 @@ public sealed class Room
         if (Status != RoomStatus.WaitingForPlayers)
         {
             throw new RoomJoinNotAllowedException();
+        }
+    }
+
+    private void EnsureReadinessChangeAllowed()
+    {
+        if (Status != RoomStatus.WaitingForPlayers)
+        {
+            throw new RoomSetPlayerReadyNotAllowedException();
         }
     }
 

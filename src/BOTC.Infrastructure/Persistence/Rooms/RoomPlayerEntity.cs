@@ -14,6 +14,8 @@ public sealed class RoomPlayerEntity
 
     public DateTime JoinedAtUtc { get; set; }
 
+    public bool IsReady { get; set; }
+
     public RoomEntity Room { get; set; } = null!;
 }
 

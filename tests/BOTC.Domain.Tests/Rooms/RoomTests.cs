@@ -252,4 +252,67 @@ public sealed class RoomTests
 
         Assert.Equal(missingPlayerId, exception.PlayerId);
     }
+
+    [Fact]
+    public void SetPlayerReady_WhenPlayerExists_UpdatesPlayerReadiness()
+    {
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+        var alice = room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
+
+        room.SetPlayerReady(alice.Id, true);
+
+        Assert.Contains(room.Players, player => player.Id == alice.Id && player.IsReady);
+    }
+
+    [Fact]
+    public void SetPlayerReady_WhenRoomIsNotWaitingForPlayers_ThrowsRoomSetPlayerReadyNotAllowedException()
+    {
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+        var alice = room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
+        room.SetPlayerReady(alice.Id, true);
+        var startOutcome = room.StartGame(room.HostPlayerId);
+        Assert.True(startOutcome.IsStarted);
+
+        var act = () => room.SetPlayerReady(alice.Id, false);
+
+        Assert.Throws<RoomSetPlayerReadyNotAllowedException>(act);
+    }
+
+    [Fact]
+    public void StartGame_WhenOnlyHostIsInRoom_ReturnsNotEnoughPlayersReason()
+    {
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+
+        var outcome = room.StartGame(room.HostPlayerId);
+
+        Assert.False(outcome.IsStarted);
+        Assert.Equal(RoomStartGameBlockedReason.NotEnoughPlayers, outcome.BlockedReason);
+        Assert.Equal(RoomStatus.WaitingForPlayers, room.Status);
+    }
+
+    [Fact]
+    public void StartGame_WhenNonHostPlayerIsNotReady_ReturnsNonHostPlayersNotReadyReason()
+    {
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+        room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
+
+        var outcome = room.StartGame(room.HostPlayerId);
+
+        Assert.False(outcome.IsStarted);
+        Assert.Equal(RoomStartGameBlockedReason.NonHostPlayersNotReady, outcome.BlockedReason);
+    }
+
+    [Fact]
+    public void StartGame_WhenAllNonHostPlayersAreReady_StartsGame()
+    {
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+        var alice = room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
+        room.SetPlayerReady(alice.Id, true);
+
+        var outcome = room.StartGame(room.HostPlayerId);
+
+        Assert.True(outcome.IsStarted);
+        Assert.Null(outcome.BlockedReason);
+        Assert.Equal(RoomStatus.InProgress, room.Status);
+    }
 }

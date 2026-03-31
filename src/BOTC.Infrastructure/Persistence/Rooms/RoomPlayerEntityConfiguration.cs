@@ -25,6 +25,9 @@ internal sealed class RoomPlayerEntityConfiguration : IEntityTypeConfiguration<R
         builder.Property(player => player.JoinedAtUtc)
             .IsRequired();
 
+        builder.Property(player => player.IsReady)
+            .IsRequired();
+
         builder.HasIndex(player => new { player.RoomId, player.NormalizedDisplayName })
             .IsUnique();
 
