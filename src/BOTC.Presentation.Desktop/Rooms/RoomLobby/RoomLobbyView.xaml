@@ -19,11 +19,11 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="16" />
+            <RowDefinition Height="12" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="16" />
+            <RowDefinition Height="12" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="16" />
+            <RowDefinition Height="14" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -40,56 +40,84 @@
 
         <sharedControls:SectionCard Grid.Row="2"
                                     Title="Room status"
-                                    Subtitle="Connection health, identity details, and current lobby snapshot metadata.">
+                                    Subtitle="Current lobby status, realtime connection, and player identity details.">
             <sharedControls:SectionCard.BodyContent>
                 <StackPanel>
-                    <WrapPanel>
-                        <sharedControls:StatusBadge Text="{Binding RoomCode, StringFormat=Room {0}}" />
-                        <sharedControls:StatusBadge Text="{Binding RoomStatus}" />
-                        <Border Style="{StaticResource RealtimeStateBadgeBorderStyle}">
-                            <TextBlock Style="{StaticResource RealtimeStateBadgeTextStyle}"
-                                       Text="{Binding RealtimeStateText}" />
-                        </Border>
+                    <WrapPanel Style="{StaticResource LobbySummaryBadgesWrapStyle}">
+                        <StackPanel Margin="0,0,14,8">
+                            <TextBlock Style="{StaticResource LobbyMetadataLabelTextStyle}" Text="Room" />
+                            <sharedControls:StatusBadge Margin="0,4,0,0" Text="{Binding RoomCode, StringFormat=Code {0}}" />
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,14,8">
+                            <TextBlock Style="{StaticResource LobbyMetadataLabelTextStyle}" Text="Lobby" />
+                            <sharedControls:StatusBadge Margin="0,4,0,0" Text="{Binding RoomStatus}" />
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,8">
+                            <TextBlock Style="{StaticResource LobbyMetadataLabelTextStyle}" Text="Realtime" />
+                            <Border Margin="0,4,0,0" Style="{StaticResource RealtimeStateBadgeBorderStyle}">
+                                <TextBlock Style="{StaticResource RealtimeStateBadgeTextStyle}"
+                                           Text="{Binding RealtimeStateText}" />
+                            </Border>
+                        </StackPanel>
                     </WrapPanel>
 
-                    <Grid Margin="0,4,0,0">
+                    <Grid Margin="0,2,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="0"
-                                    Style="{StaticResource LobbyMetadataGroupStyle}">
-                            <TextBlock Style="{StaticResource LobbyMetadataLabelTextStyle}" Text="Host" />
-                            <TextBlock Style="{StaticResource ValueTextStyle}" Text="{Binding HostDisplayName}" />
-
-                            <TextBlock Margin="0,8,0,0" Style="{StaticResource LobbyMetadataLabelTextStyle}" Text="You" />
-                            <TextBlock Style="{StaticResource ValueTextStyle}" Text="{Binding CurrentUserDisplayName}" />
-                        </StackPanel>
+                        <Border Grid.Column="0"
+                                Margin="0,8,10,0"
+                                Style="{StaticResource LobbySummaryIdentityCardStyle}"
+                                Background="{StaticResource BrushInfoBackground}"
+                                BorderBrush="{StaticResource BrushInfoForeground}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource LobbySummaryIdentityTitleTextStyle}" Text="You" />
+                                <TextBlock Style="{StaticResource LobbySummaryIdentityNameTextStyle}" Text="{Binding CurrentUserDisplayName}" />
+                                <TextBlock Style="{StaticResource LobbySummaryIdentityRoleTextStyle}" Text="{Binding CurrentUserRole}" />
+                            </StackPanel>
+                        </Border>
 
                         <StackPanel Grid.Column="1"
                                     Style="{StaticResource LobbyMetadataGroupStyle}">
-                            <TextBlock Style="{StaticResource LobbyMetadataLabelTextStyle}" Text="Your role" />
-                            <TextBlock Style="{StaticResource ValueTextStyle}" Text="{Binding CurrentUserRole}" />
+                            <Border Style="{StaticResource LobbySummaryIdentityCardStyle}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource LobbySummaryIdentityTitleTextStyle}" Text="Host" />
+                                    <TextBlock Style="{StaticResource LobbySummaryIdentityNameTextStyle}" Text="{Binding HostDisplayName}" />
+                                    <TextBlock Style="{StaticResource LobbySummaryIdentityRoleTextStyle}" Text="Room owner" />
+                                </StackPanel>
+                            </Border>
 
                             <TextBlock Margin="0,8,0,0" Style="{StaticResource LobbyMetadataLabelTextStyle}" Text="Last successful sync" />
                             <TextBlock Style="{StaticResource ValueTextStyle}" Text="{Binding LastSuccessfulRefreshText}" />
                         </StackPanel>
                     </Grid>
 
-                    <sharedControls:ErrorBanner Margin="0,10,0,0"
-                                                Message="{Binding ScreenMessage}"
-                                                Kind="{Binding ScreenMessageKind}"
-                                                Show="{Binding HasScreenMessage}" />
+                    <StackPanel Style="{StaticResource LobbyMessagesGroupStyle}"
+                                Visibility="{Binding HasAnyStatusUpdate, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Style="{StaticResource LobbyMessagesHeadingTextStyle}" Text="Updates" />
 
-                    <sharedControls:ErrorBanner Margin="0,10,0,0"
-                                                Message="{Binding RealtimeMessage}"
-                                                Kind="{Binding RealtimeMessageKind}"
-                                                Show="{Binding HasRealtimeMessage}" />
+                        <sharedControls:ErrorBanner Message="{Binding ScreenMessage}"
+                                                    Kind="{Binding ScreenMessageKind}"
+                                                    Show="{Binding HasScreenMessage}" />
 
-                    <sharedControls:LoadingPanel Margin="0,12,0,0"
-                                                 Text="{Binding BusyText}"
-                                                 IsBusy="{Binding IsBusy}" />
+                        <sharedControls:ErrorBanner Margin="0,8,0,0"
+                                                    Message="{Binding RealtimeMessage}"
+                                                    Kind="{Binding RealtimeMessageKind}"
+                                                    Show="{Binding HasRealtimeMessage}" />
+
+                        <TextBlock Margin="0,8,0,0"
+                                   Style="{StaticResource MutedTextStyle}"
+                                   Visibility="{Binding ShowLastSuccessfulLobbyHint, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                   Text="Showing the last successful lobby snapshot while newer updates are unavailable." />
+
+                        <sharedControls:LoadingPanel Margin="0,8,0,0"
+                                                     Text="{Binding BusyText}"
+                                                     IsBusy="{Binding IsBusy}" />
+                    </StackPanel>
                 </StackPanel>
             </sharedControls:SectionCard.BodyContent>
         </sharedControls:SectionCard>
@@ -114,7 +142,7 @@
 
                                         <Border Grid.Column="0"
                                                 Style="{StaticResource LobbyPlayerSeatBadgeStyle}">
-                                            <TextBlock Style="{StaticResource BadgeTextStyle}"
+                                            <TextBlock Style="{StaticResource LobbyPlayerSeatTextStyle}"
                                                        Text="{Binding SeatNumber}" />
                                         </Border>
 
@@ -131,8 +159,25 @@
                                                                         Text="You"
                                                                         Visibility="{Binding IsCurrentUser, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                             <sharedControls:StatusBadge Margin="8,0,0,0"
-                                                                        Text="Host"
-                                                                        Visibility="{Binding IsHost, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                        Text="Host">
+                                                <sharedControls:StatusBadge.Style>
+                                                    <Style TargetType="{x:Type sharedControls:StatusBadge}">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsHost}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                            <MultiDataTrigger>
+                                                                <MultiDataTrigger.Conditions>
+                                                                    <Condition Binding="{Binding IsHost}" Value="True" />
+                                                                    <Condition Binding="{Binding IsCurrentUser}" Value="True" />
+                                                                </MultiDataTrigger.Conditions>
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </MultiDataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </sharedControls:StatusBadge.Style>
+                                            </sharedControls:StatusBadge>
                                         </StackPanel>
                                     </Grid>
                                 </Border>

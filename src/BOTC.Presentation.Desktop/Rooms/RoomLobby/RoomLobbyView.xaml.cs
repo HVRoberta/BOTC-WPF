@@ -1,5 +1,4 @@
 ﻿using System.Windows;
-using System.Windows.Controls;
 
 namespace BOTC.Presentation.Desktop.Rooms.RoomLobby;
 
@@ -16,6 +15,7 @@ public partial class RoomLobbyView
     {
         if (DataContext is RoomLobbyViewModel viewModel)
         {
+
             await viewModel.ActivateAsync(CancellationToken.None);
         }
     }

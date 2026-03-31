@@ -72,9 +72,8 @@ public sealed class CreateRoomViewModelTests
             NavigateToJoinRoomCallCount++;
         }
 
-        public Task NavigateToRoomLobbyAsync(CancellationToken cancellationToken)
+        public void NavigateToRoomLobby()
         {
-            return Task.CompletedTask;
         }
     }
 
