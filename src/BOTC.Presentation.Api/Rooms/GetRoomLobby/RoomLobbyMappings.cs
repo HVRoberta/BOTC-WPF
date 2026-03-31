@@ -24,7 +24,8 @@ internal static class RoomLobbyMappings
         return new LobbyPlayerResponse(
             player.PlayerId.Value.ToString(),
             player.DisplayName,
-            ToIsHost(player.Role));
+            ToIsHost(player.Role),
+            player.IsReady);
     }
 
     private static bool ToIsHost(RoomPlayerRole role)
@@ -42,6 +43,7 @@ internal static class RoomLobbyMappings
         return status switch
         {
             RoomStatus.WaitingForPlayers => RoomStatusContract.WaitingForPlayers,
+            RoomStatus.InProgress => RoomStatusContract.InProgress,
             _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unsupported room status.")
         };
     }

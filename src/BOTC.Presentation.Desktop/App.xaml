@@ -6,6 +6,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Rooms/Shared/Resources/Converters.xaml" />
                 <ResourceDictionary Source="Rooms/Shared/Resources/Tokens/Colors.xaml" />
+                <ResourceDictionary Source="Rooms/Shared/Resources/Themes/DarkTheme.xaml" />
                 <ResourceDictionary Source="Rooms/Shared/Resources/Tokens/Brushes.xaml" />
                 <ResourceDictionary Source="Rooms/Shared/Resources/Tokens/Typography.xaml" />
                 <ResourceDictionary Source="Rooms/Shared/Resources/Tokens/SpacingSizing.xaml" />

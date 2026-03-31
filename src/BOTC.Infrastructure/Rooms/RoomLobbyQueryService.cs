@@ -56,6 +56,7 @@ public sealed class RoomLobbyQueryService : IRoomLobbyQueryService
         return new LobbyPlayerResult(
             new RoomPlayerId(entity.Id),
             entity.DisplayName,
-            (RoomPlayerRole)entity.Role);
+            (RoomPlayerRole)entity.Role,
+            entity.IsReady);
     }
 }

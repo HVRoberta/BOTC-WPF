@@ -10,6 +10,8 @@ public sealed class RoomsApiClient(HttpClient httpClient) : IRoomsApiClient
     private const string CreateRoomPath = "/api/rooms";
     private const string JoinRoomPathFormat = "/api/rooms/{0}/join";
     private const string LeaveRoomPathFormat = "/api/rooms/{0}/leave";
+    private const string SetPlayerReadyPathFormat = "/api/rooms/{0}/ready";
+    private const string StartGamePathFormat = "/api/rooms/{0}/start";
     private const string RoomLobbyPathFormat = "/api/rooms/{0}/lobby";
 
     public async Task<CreateRoomResponse> CreateRoomAsync(CreateRoomRequest request, CancellationToken cancellationToken)
@@ -55,6 +57,40 @@ public sealed class RoomsApiClient(HttpClient httpClient) : IRoomsApiClient
         if (payload is null)
         {
             throw new InvalidOperationException("Leave room response payload was empty.");
+        }
+
+        return payload;
+    }
+
+    public async Task<SetPlayerReadyResponse> SetPlayerReadyAsync(string roomCode, SetPlayerReadyRequest request, CancellationToken cancellationToken)
+    {
+        var encodedRoomCode = Uri.EscapeDataString(roomCode);
+        var requestPath = string.Format(CultureInfo.InvariantCulture, SetPlayerReadyPathFormat, encodedRoomCode);
+
+        using var response = await httpClient.PostAsJsonAsync(requestPath, request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var payload = await response.Content.ReadFromJsonAsync<SetPlayerReadyResponse>(cancellationToken);
+        if (payload is null)
+        {
+            throw new InvalidOperationException("Set player ready response payload was empty.");
+        }
+
+        return payload;
+    }
+
+    public async Task<StartGameResponse> StartGameAsync(string roomCode, StartGameRequest request, CancellationToken cancellationToken)
+    {
+        var encodedRoomCode = Uri.EscapeDataString(roomCode);
+        var requestPath = string.Format(CultureInfo.InvariantCulture, StartGamePathFormat, encodedRoomCode);
+
+        using var response = await httpClient.PostAsJsonAsync(requestPath, request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var payload = await response.Content.ReadFromJsonAsync<StartGameResponse>(cancellationToken);
+        if (payload is null)
+        {
+            throw new InvalidOperationException("Start game response payload was empty.");
         }
 
         return payload;

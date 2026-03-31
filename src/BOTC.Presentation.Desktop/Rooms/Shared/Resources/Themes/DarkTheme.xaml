@@ -1,0 +1,22 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Color x:Key="ColorCanvasBackground">#FF141822</Color>
+    <Color x:Key="ColorSurface">#FF1C2331</Color>
+    <Color x:Key="ColorSurfaceAlt">#FF232C3C</Color>
+    <Color x:Key="ColorBorderStrong">#FF4C5B75</Color>
+    <Color x:Key="ColorBorderSubtle">#FF354158</Color>
+    <Color x:Key="ColorAccent">#FF7AA9D6</Color>
+    <Color x:Key="ColorAccentForeground">#FF10141D</Color>
+    <Color x:Key="ColorTextPrimary">#FFF1F4FB</Color>
+    <Color x:Key="ColorTextSecondary">#FFC1CCDD</Color>
+    <Color x:Key="ColorBadgeBackground">#FF2B384D</Color>
+    <Color x:Key="ColorBadgeForeground">#FFE4EBF6</Color>
+    <Color x:Key="ColorErrorBackground">#FF3B1F26</Color>
+    <Color x:Key="ColorErrorForeground">#FFF2A5B2</Color>
+    <Color x:Key="ColorDangerSurface">#FF3A252D</Color>
+    <Color x:Key="ColorDangerBorder">#FFB77887</Color>
+    <Color x:Key="ColorInfoBackground">#FF1B3047</Color>
+    <Color x:Key="ColorInfoForeground">#FF9DCCFF</Color>
+    <Color x:Key="ColorBusy">#FF89B5E0</Color>
+</ResourceDictionary>
+

@@ -1,6 +1,8 @@
 ﻿using BOTC.Application.Abstractions.Persistence;
 using BOTC.Application.Features.Rooms.JoinRoom;
 using BOTC.Application.Features.Rooms.LeaveRoom;
+using BOTC.Application.Features.Rooms.SetPlayerReady;
+using BOTC.Application.Features.Rooms.StartGame;
 using BOTC.Domain.Rooms;
 using BOTC.Infrastructure.Persistence;
 using BOTC.Infrastructure.Persistence.Rooms;
@@ -9,7 +11,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BOTC.Infrastructure.Rooms;
 
-public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository, IRoomLeaveRepository
+public sealed class RoomRepository :
+    IRoomRepository,
+    IRoomJoinRepository,
+    IRoomLeaveRepository,
+    IRoomSetPlayerReadyRepository,
+    IRoomStartGameRepository
 {
     private const int SqliteConstraintErrorCode = 19;
     private const int SqliteConstraintUniqueExtendedErrorCode = 2067;
@@ -58,11 +65,23 @@ public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository, IRoom
     Task<Room?> IRoomLeaveRepository.GetByCodeAsync(RoomCode roomCode, CancellationToken cancellationToken) =>
         GetByCodeAsync(roomCode, cancellationToken);
 
+    Task<Room?> IRoomSetPlayerReadyRepository.GetByCodeAsync(RoomCode roomCode, CancellationToken cancellationToken) =>
+        GetByCodeAsync(roomCode, cancellationToken);
+
+    Task<Room?> IRoomStartGameRepository.GetByCodeAsync(RoomCode roomCode, CancellationToken cancellationToken) =>
+        GetByCodeAsync(roomCode, cancellationToken);
+
     Task<bool> IRoomJoinRepository.TrySaveAsync(Room room, CancellationToken cancellationToken) =>
         TrySaveForJoinAsync(room, cancellationToken);
 
     Task<bool> IRoomLeaveRepository.TrySaveAsync(Room room, CancellationToken cancellationToken) =>
         TrySaveAsyncCore(room, cancellationToken, roomId => new RoomLeaveSaveRoomMissingException(roomId));
+
+    Task<bool> IRoomSetPlayerReadyRepository.TrySaveAsync(Room room, CancellationToken cancellationToken) =>
+        TrySaveAsyncCore(room, cancellationToken, roomId => new RoomSetPlayerReadySaveRoomMissingException(roomId));
+
+    Task<bool> IRoomStartGameRepository.TrySaveAsync(Room room, CancellationToken cancellationToken) =>
+        TrySaveAsyncCore(room, cancellationToken, roomId => new RoomStartGameSaveRoomMissingException(roomId));
 
     Task<bool> IRoomLeaveRepository.TryDeleteAsync(RoomId roomId, CancellationToken cancellationToken) =>
         TryDeleteAsyncCore(roomId, cancellationToken);
@@ -231,6 +250,11 @@ public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository, IRoom
             {
                 persistedPlayer.JoinedAtUtc = desiredPlayer.JoinedAtUtc;
             }
+
+            if (persistedPlayer.IsReady != desiredPlayer.IsReady)
+            {
+                persistedPlayer.IsReady = desiredPlayer.IsReady;
+            }
         }
     }
 
@@ -257,7 +281,8 @@ public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository, IRoom
             DisplayName = player.DisplayName,
             NormalizedDisplayName = player.NormalizedDisplayName,
             Role = (int)player.Role,
-            JoinedAtUtc = player.JoinedAtUtc
+            JoinedAtUtc = player.JoinedAtUtc,
+            IsReady = player.IsReady
         };
     }
 
@@ -294,7 +319,8 @@ public sealed class RoomRepository : IRoomRepository, IRoomJoinRepository, IRoom
             entity.DisplayName,
             entity.NormalizedDisplayName,
             (RoomPlayerRole)entity.Role,
-            NormalizePersistedUtc(entity.JoinedAtUtc));
+            NormalizePersistedUtc(entity.JoinedAtUtc),
+            entity.IsReady);
     }
 
     private static DateTime NormalizePersistedUtc(DateTime value)

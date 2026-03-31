@@ -69,8 +69,8 @@ public sealed class GetRoomLobbyHandlerTests
         repository.SeedLobby(new GetRoomLobbyResult(
             new RoomCode("AB12CD"),
             [
-                new LobbyPlayerResult(new RoomPlayerId(Guid.NewGuid()), "Host", RoomPlayerRole.Host),
-                new LobbyPlayerResult(new RoomPlayerId(Guid.NewGuid()), "Alice", RoomPlayerRole.Player)
+                new LobbyPlayerResult(new RoomPlayerId(Guid.NewGuid()), "Host", RoomPlayerRole.Host, false),
+                new LobbyPlayerResult(new RoomPlayerId(Guid.NewGuid()), "Alice", RoomPlayerRole.Player, false)
             ],
             RoomStatus.WaitingForPlayers));
 
@@ -85,8 +85,10 @@ public sealed class GetRoomLobbyHandlerTests
         Assert.Equal(2, result.Players.Count);
         Assert.Equal("Host", result.Players[0].DisplayName);
         Assert.Equal(RoomPlayerRole.Host, result.Players[0].Role);
+        Assert.False(result.Players[0].IsReady);
         Assert.Equal("Alice", result.Players[1].DisplayName);
         Assert.Equal(RoomPlayerRole.Player, result.Players[1].Role);
+        Assert.False(result.Players[1].IsReady);
         Assert.Equal(1, repository.GetByRoomCodeCallCount);
     }
 
@@ -97,7 +99,7 @@ public sealed class GetRoomLobbyHandlerTests
         var repository = new FakeRoomLobbyQueryService();
         repository.SeedLobby(new GetRoomLobbyResult(
             new RoomCode("AB12CD"),
-            [new LobbyPlayerResult(new RoomPlayerId(Guid.NewGuid()), "Host", RoomPlayerRole.Host)],
+            [new LobbyPlayerResult(new RoomPlayerId(Guid.NewGuid()), "Host", RoomPlayerRole.Host, false)],
             RoomStatus.WaitingForPlayers));
 
         var handler = new GetRoomLobbyHandler(repository);

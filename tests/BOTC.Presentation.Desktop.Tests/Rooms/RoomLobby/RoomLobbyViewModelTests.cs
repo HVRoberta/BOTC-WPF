@@ -94,6 +94,183 @@ public sealed class RoomLobbyViewModelTests
     }
 
     [Fact]
+    public async Task ToggleReady_WhenExecuted_UpdatesReadyStateAndRefreshesLobby()
+    {
+        const string roomCode = "AB12CD";
+        const string hostPlayerId = "host-1";
+        const string currentPlayerId = "player-1";
+        var apiClient = new FakeRoomsApiClient(
+            [
+                Task.FromResult(CreateLobbyResponse(
+                    roomCode,
+                    [
+                        CreateLobbyPlayer(hostPlayerId, "Host", isHost: true, isReady: false),
+                        CreateLobbyPlayer(currentPlayerId, "Alice", isHost: false, isReady: false)
+                    ])),
+                Task.FromResult(CreateLobbyResponse(
+                    roomCode,
+                    [
+                        CreateLobbyPlayer(hostPlayerId, "Host", isHost: true, isReady: false),
+                        CreateLobbyPlayer(currentPlayerId, "Alice", isHost: false, isReady: true)
+                    ]))
+            ],
+            setPlayerReadyResponse: new SetPlayerReadyResponse(roomCode, currentPlayerId, true));
+        var realtimeClient = new FakeRoomLobbyRealtimeClient();
+        var navigationService = new FakeNavigationService();
+        var sessionService = new FakeClientSessionService();
+        sessionService.SetSession(roomCode, currentPlayerId, "Alice");
+        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
+
+        await viewModel.ActivateAsync(CancellationToken.None);
+        await viewModel.ToggleReadyCommand.ExecuteAsync(null);
+
+        Assert.Equal(roomCode, apiClient.LastSetReadyRoomCode);
+        Assert.NotNull(apiClient.LastSetReadyRequest);
+        Assert.Equal(currentPlayerId, apiClient.LastSetReadyRequest!.PlayerId);
+        Assert.True(apiClient.LastSetReadyRequest.IsReady);
+        Assert.Equal(2, apiClient.GetRoomLobbyCallCount);
+        Assert.True(viewModel.IsCurrentUserReady);
+        Assert.Equal("1/1 players ready", viewModel.NonHostReadinessSummary);
+    }
+
+    [Fact]
+    public async Task ToggleReady_WhenCurrentUserIsHost_CommandIsDisabledAndHostSummaryIsShown()
+    {
+        const string roomCode = "AB12CD";
+        const string hostPlayerId = "host-1";
+        var apiClient = new FakeRoomsApiClient(
+            [
+                Task.FromResult(CreateLobbyResponse(
+                    roomCode,
+                    [
+                        CreateLobbyPlayer(hostPlayerId, "Host", isHost: true, isReady: false),
+                        CreateLobbyPlayer("player-1", "Alice", isHost: false, isReady: true)
+                    ]))
+            ]);
+        var realtimeClient = new FakeRoomLobbyRealtimeClient();
+        var navigationService = new FakeNavigationService();
+        var sessionService = new FakeClientSessionService();
+        sessionService.SetSession(roomCode, hostPlayerId, "Host");
+        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
+
+        await viewModel.ActivateAsync(CancellationToken.None);
+
+        Assert.False(viewModel.ToggleReadyCommand.CanExecute(null));
+        Assert.Equal("Host does not use ready state", viewModel.CurrentUserReadyStateText);
+    }
+
+    [Fact]
+    public async Task StartGame_WhenCurrentUserIsNotHost_CommandIsDisabled()
+    {
+        const string roomCode = "AB12CD";
+        const string hostPlayerId = "host-1";
+        const string currentPlayerId = "player-1";
+        var apiClient = new FakeRoomsApiClient(
+        [
+            Task.FromResult(CreateLobbyResponse(
+                roomCode,
+                [
+                    CreateLobbyPlayer(hostPlayerId, "Host", isHost: true, isReady: false),
+                    CreateLobbyPlayer(currentPlayerId, "Alice", isHost: false, isReady: true)
+                ]))
+        ]);
+        var realtimeClient = new FakeRoomLobbyRealtimeClient();
+        var navigationService = new FakeNavigationService();
+        var sessionService = new FakeClientSessionService();
+        sessionService.SetSession(roomCode, currentPlayerId, "Alice");
+        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
+
+        await viewModel.ActivateAsync(CancellationToken.None);
+
+        Assert.False(viewModel.StartGameCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task StartGame_WhenEligibleAndHostedByCurrentUser_CallsApiAndRefreshesLobby()
+    {
+        const string roomCode = "AB12CD";
+        const string hostPlayerId = "host-1";
+        var apiClient = new FakeRoomsApiClient(
+            [
+                Task.FromResult(CreateLobbyResponse(
+                    roomCode,
+                    [
+                        CreateLobbyPlayer(hostPlayerId, "Host", isHost: true, isReady: false),
+                        CreateLobbyPlayer("player-1", "Alice", isHost: false, isReady: true)
+                    ])),
+                Task.FromResult(CreateLobbyResponse(
+                    roomCode,
+                    [
+                        CreateLobbyPlayer(hostPlayerId, "Host", isHost: true, isReady: false),
+                        CreateLobbyPlayer("player-1", "Alice", isHost: false, isReady: true)
+                    ],
+                    RoomStatusContract.InProgress))
+            ],
+            startGameResponse: new StartGameResponse(
+                roomCode,
+                hostPlayerId,
+                true,
+                null,
+                RoomStatusContract.InProgress));
+        var realtimeClient = new FakeRoomLobbyRealtimeClient();
+        var navigationService = new FakeNavigationService();
+        var sessionService = new FakeClientSessionService();
+        sessionService.SetSession(roomCode, hostPlayerId, "Host");
+        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
+
+        await viewModel.ActivateAsync(CancellationToken.None);
+        await viewModel.StartGameCommand.ExecuteAsync(null);
+
+        Assert.Equal(roomCode, apiClient.LastStartGameRoomCode);
+        Assert.NotNull(apiClient.LastStartGameRequest);
+        Assert.Equal(hostPlayerId, apiClient.LastStartGameRequest!.StarterPlayerId);
+        Assert.Equal(1, apiClient.StartGameCallCount);
+        Assert.Equal(2, apiClient.GetRoomLobbyCallCount);
+        Assert.Equal("In progress", viewModel.RoomStatus);
+    }
+
+    [Fact]
+    public async Task StartGame_WhenServerReturnsBlockedReason_ShowsUserFriendlyMessageAndRefreshes()
+    {
+        const string roomCode = "AB12CD";
+        const string hostPlayerId = "host-1";
+        var apiClient = new FakeRoomsApiClient(
+            [
+                Task.FromResult(CreateLobbyResponse(
+                    roomCode,
+                    [
+                        CreateLobbyPlayer(hostPlayerId, "Host", isHost: true, isReady: false),
+                        CreateLobbyPlayer("player-1", "Alice", isHost: false, isReady: true)
+                    ])),
+                Task.FromResult(CreateLobbyResponse(
+                    roomCode,
+                    [
+                        CreateLobbyPlayer(hostPlayerId, "Host", isHost: true, isReady: false),
+                        CreateLobbyPlayer("player-1", "Alice", isHost: false, isReady: false)
+                    ]))
+            ],
+            startGameResponse: new StartGameResponse(
+                roomCode,
+                hostPlayerId,
+                false,
+                StartGameBlockedReasonContract.NonHostPlayersNotReady,
+                RoomStatusContract.WaitingForPlayers));
+        var realtimeClient = new FakeRoomLobbyRealtimeClient();
+        var navigationService = new FakeNavigationService();
+        var sessionService = new FakeClientSessionService();
+        sessionService.SetSession(roomCode, hostPlayerId, "Host");
+        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
+
+        await viewModel.ActivateAsync(CancellationToken.None);
+        await viewModel.StartGameCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, apiClient.StartGameCallCount);
+        Assert.Equal(2, apiClient.GetRoomLobbyCallCount);
+        Assert.Equal("Unable to start because not all non-host players are ready.", viewModel.ErrorMessage);
+        Assert.Equal(ScreenMessageKind.Error, viewModel.ScreenMessageKind);
+    }
+
+    [Fact]
     public async Task LeaveRoom_WhenLeaveSucceeds_CallsApiWithCurrentPlayerIdAndNavigatesAway()
     {
         var playerId = Guid.NewGuid().ToString();
@@ -179,8 +356,21 @@ public sealed class RoomLobbyViewModelTests
     {
         return new GetRoomLobbyResponse(
             roomCode,
-            players.Select((playerName, index) => new LobbyPlayerResponse(index.ToString(), playerName, index == 0)).ToArray(),
+            players.Select((playerName, index) => new LobbyPlayerResponse(index.ToString(), playerName, index == 0, false)).ToArray(),
             RoomStatusContract.WaitingForPlayers);
+    }
+
+    private static GetRoomLobbyResponse CreateLobbyResponse(
+        string roomCode,
+        IReadOnlyList<LobbyPlayerResponse> players,
+        RoomStatusContract status = RoomStatusContract.WaitingForPlayers)
+    {
+        return new GetRoomLobbyResponse(roomCode, players, status);
+    }
+
+    private static LobbyPlayerResponse CreateLobbyPlayer(string playerId, string displayName, bool isHost, bool isReady)
+    {
+        return new LobbyPlayerResponse(playerId, displayName, isHost, isReady);
     }
 
     private static async Task<GetRoomLobbyResponse> WaitForRefreshAsync(
@@ -197,13 +387,24 @@ public sealed class RoomLobbyViewModelTests
     {
         private readonly Queue<Task<GetRoomLobbyResponse>> _lobbyResponses;
         private readonly LeaveRoomResponse _leaveRoomResponse;
+        private readonly SetPlayerReadyResponse _setPlayerReadyResponse;
+        private readonly StartGameResponse _startGameResponse;
 
         public FakeRoomsApiClient(
             IEnumerable<Task<GetRoomLobbyResponse>> lobbyResponses,
-            LeaveRoomResponse? leaveRoomResponse = null)
+            LeaveRoomResponse? leaveRoomResponse = null,
+            SetPlayerReadyResponse? setPlayerReadyResponse = null,
+            StartGameResponse? startGameResponse = null)
         {
             _lobbyResponses = new Queue<Task<GetRoomLobbyResponse>>(lobbyResponses);
             _leaveRoomResponse = leaveRoomResponse ?? new LeaveRoomResponse("AB12CD", Guid.NewGuid().ToString(), false, null);
+            _setPlayerReadyResponse = setPlayerReadyResponse ?? new SetPlayerReadyResponse("AB12CD", Guid.NewGuid().ToString(), true);
+            _startGameResponse = startGameResponse ?? new StartGameResponse(
+                "AB12CD",
+                Guid.NewGuid().ToString(),
+                true,
+                null,
+                RoomStatusContract.InProgress);
         }
 
         public int GetRoomLobbyCallCount { get; private set; }
@@ -211,6 +412,16 @@ public sealed class RoomLobbyViewModelTests
         public string? LastLeaveRoomCode { get; private set; }
 
         public LeaveRoomRequest? LastLeaveRequest { get; private set; }
+
+        public int StartGameCallCount { get; private set; }
+
+        public string? LastSetReadyRoomCode { get; private set; }
+
+        public SetPlayerReadyRequest? LastSetReadyRequest { get; private set; }
+
+        public string? LastStartGameRoomCode { get; private set; }
+
+        public StartGameRequest? LastStartGameRequest { get; private set; }
 
         public Task<CreateRoomResponse> CreateRoomAsync(CreateRoomRequest request, CancellationToken cancellationToken)
         {
@@ -227,6 +438,21 @@ public sealed class RoomLobbyViewModelTests
             LastLeaveRoomCode = roomCode;
             LastLeaveRequest = request;
             return Task.FromResult(_leaveRoomResponse);
+        }
+
+        public Task<SetPlayerReadyResponse> SetPlayerReadyAsync(string roomCode, SetPlayerReadyRequest request, CancellationToken cancellationToken)
+        {
+            LastSetReadyRoomCode = roomCode;
+            LastSetReadyRequest = request;
+            return Task.FromResult(_setPlayerReadyResponse);
+        }
+
+        public Task<StartGameResponse> StartGameAsync(string roomCode, StartGameRequest request, CancellationToken cancellationToken)
+        {
+            StartGameCallCount++;
+            LastStartGameRoomCode = roomCode;
+            LastStartGameRequest = request;
+            return Task.FromResult(_startGameResponse);
         }
 
         public Task<GetRoomLobbyResponse> GetRoomLobbyAsync(string roomCode, CancellationToken cancellationToken)
