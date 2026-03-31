@@ -24,7 +24,6 @@ public sealed class RoomLobbyViewModelTests
         sessionService.SetSession("AB12CD", playerId, "Host");
         var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
 
-        await viewModel.LoadAsync(CancellationToken.None);
         await viewModel.ActivateAsync(CancellationToken.None);
         await realtimeClient.RaiseLobbyUpdatedAsync("AB12CD");
 
@@ -53,7 +52,6 @@ public sealed class RoomLobbyViewModelTests
         sessionService.SetSession("AB12CD", playerId, "Host");
         var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
 
-        await viewModel.LoadAsync(CancellationToken.None);
         await viewModel.ActivateAsync(CancellationToken.None);
 
         var firstUpdateTask = realtimeClient.RaiseLobbyUpdatedAsync("AB12CD");
@@ -85,7 +83,6 @@ public sealed class RoomLobbyViewModelTests
         sessionService.SetSession("AB12CD", playerId, "Host");
         var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
 
-        await viewModel.LoadAsync(CancellationToken.None);
         await viewModel.ActivateAsync(CancellationToken.None);
         await realtimeClient.RaiseLobbyUpdatedAsync("AB12CD");
 
@@ -109,7 +106,6 @@ public sealed class RoomLobbyViewModelTests
         sessionService.SetSession("AB12CD", playerId, "Alice");
         var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
 
-        await viewModel.LoadAsync(CancellationToken.None);
         await viewModel.ActivateAsync(CancellationToken.None);
         await viewModel.LeaveRoomCommand.ExecuteAsync(null);
 
@@ -117,6 +113,30 @@ public sealed class RoomLobbyViewModelTests
         Assert.Equal(playerId, apiClient.LastLeaveRequest!.PlayerId);
         Assert.Equal(1, navigationService.NavigateToCreateRoomCallCount);
         Assert.Equal("You left room AB12CD successfully.", viewModel.ErrorMessage);
+        Assert.Equal(ScreenMessageKind.Info, viewModel.ScreenMessageKind);
+        Assert.False(sessionService.HasActiveSession);
+        Assert.Empty(viewModel.Players);
+        Assert.Equal(["AB12CD"], realtimeClient.UnsubscribedRoomCodes);
+    }
+
+    [Fact]
+    public async Task LeaveRoom_WhenRoomIsRemoved_PreservesExistingInfoMessage()
+    {
+        var playerId = Guid.NewGuid().ToString();
+        var apiClient = new FakeRoomsApiClient(
+            [Task.FromResult(CreateLobbyResponse("AB12CD", ["Host"]))],
+            leaveRoomResponse: new LeaveRoomResponse("AB12CD", playerId, true, null));
+        var realtimeClient = new FakeRoomLobbyRealtimeClient();
+        var navigationService = new FakeNavigationService();
+        var sessionService = new FakeClientSessionService();
+        sessionService.SetSession("AB12CD", playerId, "Host");
+        var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
+
+        await viewModel.ActivateAsync(CancellationToken.None);
+        await viewModel.LeaveRoomCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, navigationService.NavigateToCreateRoomCallCount);
+        Assert.Equal("The room was closed while you were leaving. Returned to room setup.", viewModel.ErrorMessage);
         Assert.Equal(ScreenMessageKind.Info, viewModel.ScreenMessageKind);
         Assert.False(sessionService.HasActiveSession);
         Assert.Empty(viewModel.Players);
@@ -136,7 +156,6 @@ public sealed class RoomLobbyViewModelTests
         sessionService.SetSession("AB12CD", playerId, "Host");
         var viewModel = CreateViewModel(apiClient, realtimeClient, navigationService, sessionService);
 
-        await viewModel.LoadAsync(CancellationToken.None);
         await viewModel.ActivateAsync(CancellationToken.None);
         await realtimeClient.RaiseLobbyClosedAsync("AB12CD");
 

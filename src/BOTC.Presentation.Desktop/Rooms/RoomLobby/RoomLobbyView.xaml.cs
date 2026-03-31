@@ -4,8 +4,6 @@ namespace BOTC.Presentation.Desktop.Rooms.RoomLobby;
 
 public partial class RoomLobbyView
 {
-    private bool _isInitialized;
-
     public RoomLobbyView()
     {
         InitializeComponent();
@@ -17,11 +15,6 @@ public partial class RoomLobbyView
     {
         if (DataContext is RoomLobbyViewModel viewModel)
         {
-            if (!_isInitialized)
-            {
-                _isInitialized = true;
-                await viewModel.LoadAsync(CancellationToken.None);
-            }
 
             await viewModel.ActivateAsync(CancellationToken.None);
         }

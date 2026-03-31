@@ -16,34 +16,29 @@ public partial class RoomLobbyViewModel(
     IClientSessionService clientSessionService,
     INavigationService navigationService) : ObservableObject
 {
-    private const string UnknownValue = "-";
-
     private readonly SynchronizationContext? _capturedSynchronizationContext = SynchronizationContext.Current;
+    private readonly RoomLobbySnapshotState _snapshotState = new();
     private string _currentRoomCode = string.Empty;
     private string _currentPlayerId = string.Empty;
     private string _subscribedRoomCode = string.Empty;
-    private bool _hasLobbyData;
+    private bool _isInitialized;
     private bool _isLobbyActive;
     private bool _isRealtimeHandlerAttached;
     private bool _refreshRequested;
     private bool _isRefreshLoopRunning;
-    private string _currentUserDisplayName = string.Empty;
-    private string _currentUserRole = UnknownValue;
-    private string _hostDisplayName = string.Empty;
-    private DateTimeOffset? _lastSuccessfulRefreshAt;
     private RealtimeConnectionState _realtimeConnectionState = RealtimeConnectionState.Disconnected;
 
-    public ObservableCollection<LobbyPlayerItemViewModel> Players { get; } = new();
+    public ObservableCollection<LobbyPlayerItemViewModel> Players => _snapshotState.Players;
 
-    [ObservableProperty]
-    private string _roomCode = UnknownValue;
+    public string RoomCode => _snapshotState.RoomCode;
 
-    [ObservableProperty]
-    private string _roomStatus = UnknownValue;
+    public string RoomStatus => _snapshotState.RoomStatus;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ErrorMessage))]
     [NotifyPropertyChangedFor(nameof(HasScreenMessage))]
+    [NotifyPropertyChangedFor(nameof(HasAnyStatusUpdate))]
+    [NotifyPropertyChangedFor(nameof(ShowLastSuccessfulLobbyHint))]
     private string _screenMessage = string.Empty;
 
     [ObservableProperty]
@@ -51,6 +46,7 @@ public partial class RoomLobbyViewModel(
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasRealtimeMessage))]
+    [NotifyPropertyChangedFor(nameof(HasAnyStatusUpdate))]
     private string _realtimeMessage = string.Empty;
 
     [ObservableProperty]
@@ -60,18 +56,21 @@ public partial class RoomLobbyViewModel(
     [NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
     [NotifyCanExecuteChangedFor(nameof(LeaveRoomCommand))]
     [NotifyCanExecuteChangedFor(nameof(BackToCreateRoomCommand))]
+    [NotifyPropertyChangedFor(nameof(HasAnyStatusUpdate))]
     private bool _isLoading;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
     [NotifyCanExecuteChangedFor(nameof(LeaveRoomCommand))]
     [NotifyCanExecuteChangedFor(nameof(BackToCreateRoomCommand))]
+    [NotifyPropertyChangedFor(nameof(HasAnyStatusUpdate))]
     private bool _isRefreshing;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
     [NotifyCanExecuteChangedFor(nameof(LeaveRoomCommand))]
     [NotifyCanExecuteChangedFor(nameof(BackToCreateRoomCommand))]
+    [NotifyPropertyChangedFor(nameof(HasAnyStatusUpdate))]
     private bool _isLeaving;
 
     public string ErrorMessage => ScreenMessage;
@@ -80,19 +79,21 @@ public partial class RoomLobbyViewModel(
 
     public bool HasRealtimeMessage => !string.IsNullOrWhiteSpace(RealtimeMessage);
 
-    public bool HasLobbyData => _hasLobbyData;
+    public bool HasAnyStatusUpdate => HasScreenMessage || HasRealtimeMessage || IsBusy;
 
-    public string CurrentUserDisplayName => string.IsNullOrWhiteSpace(_currentUserDisplayName) ? UnknownValue : _currentUserDisplayName;
+    public bool HasLobbyData => _snapshotState.HasLobbyData;
 
-    public string CurrentUserRole => _currentUserRole;
+    public bool ShowLastSuccessfulLobbyHint => HasLobbyData && HasScreenMessage;
 
-    public string HostDisplayName => string.IsNullOrWhiteSpace(_hostDisplayName) ? UnknownValue : _hostDisplayName;
+    public string CurrentUserDisplayName => _snapshotState.CurrentUserDisplayName;
 
-    public string PlayerCountSummary => Players.Count == 1 ? "1 player in lobby" : $"{Players.Count} players in lobby";
+    public string CurrentUserRole => _snapshotState.CurrentUserRole;
 
-    public string LastSuccessfulRefreshText => _lastSuccessfulRefreshAt is null
-        ? "No successful refresh yet"
-        : $"Last synced at {_lastSuccessfulRefreshAt.Value.ToLocalTime():HH:mm:ss}";
+    public string HostDisplayName => _snapshotState.HostDisplayName;
+
+    public string PlayerCountSummary => _snapshotState.PlayerCountSummary;
+
+    public string LastSuccessfulRefreshText => _snapshotState.LastSuccessfulRefreshText;
 
     public bool IsBusy => IsLoading || IsRefreshing || IsLeaving;
 
@@ -127,41 +128,70 @@ public partial class RoomLobbyViewModel(
         navigationService.NavigateToCreateRoom();
     }
 
-    public async Task LoadAsync(CancellationToken cancellationToken)
-    {
-        if (!TrySetSessionContext())
-        {
-            clientSessionService.ClearSession();
-            await ExitLobbyAsync(CancellationToken.None);
-            ResetLobbyState("Session is invalid. Join or create a room again.", ScreenMessageKind.Error);
-            navigationService.NavigateToCreateRoom();
-            return;
-        }
-
-        RoomCode = _currentRoomCode;
-        await TryEnsureRealtimeSubscriptionAsync(cancellationToken);
-        await QueueLobbyRefreshAsync(cancellationToken);
-    }
-
     public async Task ActivateAsync(CancellationToken cancellationToken)
     {
         _isLobbyActive = true;
         AttachRealtimeHandler();
 
+        if (!_isInitialized)
+        {
+            await ActivateLobbyForInitialVisitAsync(cancellationToken);
+        }
+        else
+        {
+            await ActivateLobbyForSubsequentVisitAsync(cancellationToken);
+        }
+    }
+
+    public async Task DeactivateAsync(CancellationToken cancellationToken)
+    {
+        // RoomLobbyViewModel is transient, so _isInitialized will naturally be false on
+        // the next navigation. Resetting explicitly keeps this method correct if the
+        // lifetime ever changes to scoped or singleton.
+        _isInitialized = false;
+        await ExitLobbyAsync(cancellationToken);
+    }
+
+    private async Task ActivateLobbyForInitialVisitAsync(CancellationToken cancellationToken)
+    {
+        _isInitialized = true;
+
         if (!TrySetSessionContext())
         {
-            await ExitLobbyAsync(CancellationToken.None);
-            ResetLobbyState("No active session found. Join or create a room first.", ScreenMessageKind.Error);
-            navigationService.NavigateToCreateRoom();
+            await HandleInvalidInitialSessionAsync();
+            return;
+        }
+
+        _snapshotState.SetRoomCode(_currentRoomCode);
+        OnPropertyChanged(nameof(RoomCode));
+        await TryEnsureRealtimeSubscriptionAsync(cancellationToken);
+        await QueueLobbyRefreshAsync(cancellationToken);
+    }
+
+    private async Task ActivateLobbyForSubsequentVisitAsync(CancellationToken cancellationToken)
+    {
+        if (!TrySetSessionContext())
+        {
+            await HandleMissingActiveSessionAsync();
             return;
         }
 
         await TryEnsureRealtimeSubscriptionAsync(cancellationToken);
     }
 
-    public async Task DeactivateAsync(CancellationToken cancellationToken)
+    private async Task HandleInvalidInitialSessionAsync()
     {
-        await ExitLobbyAsync(cancellationToken);
+        clientSessionService.ClearSession();
+        await ExitLobbyAsync(CancellationToken.None);
+        ResetLobbyState("Session is invalid. Join or create a room again.", ScreenMessageKind.Error);
+        navigationService.NavigateToCreateRoom();
+    }
+
+    private async Task HandleMissingActiveSessionAsync()
+    {
+        await ExitLobbyAsync(CancellationToken.None);
+        ResetLobbyState("No active session found. Join or create a room first.", ScreenMessageKind.Error);
+        navigationService.NavigateToCreateRoom();
     }
 
     private bool CanRefresh() =>
@@ -187,34 +217,18 @@ public partial class RoomLobbyViewModel(
     private async Task LeaveRoomAsync()
     {
         ClearScreenMessage();
-        var currentRoomCode = NormalizeRoomCode(clientSessionService.CurrentRoomCode ?? string.Empty);
-        var currentPlayerId = NormalizePlayerId(clientSessionService.CurrentPlayerId ?? string.Empty);
-        if (string.IsNullOrWhiteSpace(currentRoomCode) || string.IsNullOrWhiteSpace(currentPlayerId))
+        if (!TryGetLeaveSessionContext(out var currentRoomCode, out var currentPlayerId))
         {
-            ShowErrorMessage("No active session found. Join or create a room first.");
-            clientSessionService.ClearSession();
-            await ExitLobbyAsync(CancellationToken.None);
-            navigationService.NavigateToCreateRoom();
+            await HandleMissingSessionBeforeLeaveAsync();
             return;
         }
 
-        _currentRoomCode = currentRoomCode;
-        _currentPlayerId = currentPlayerId;
         IsLeaving = true;
 
         try
         {
-            var response = await roomsApiClient.LeaveRoomAsync(
-                currentRoomCode,
-                new LeaveRoomRequest(currentPlayerId),
-                CancellationToken.None);
-
-            await ExitLobbyAsync(CancellationToken.None);
-            clientSessionService.ClearSession();
-            ResetLobbyState(response.RoomWasRemoved
-                ? "The room was closed while you were leaving. Returned to room setup."
-                : $"You left room {currentRoomCode} successfully.", ScreenMessageKind.Info);
-            navigationService.NavigateToCreateRoom();
+            var response = await LeaveCurrentRoomAsync(currentRoomCode, currentPlayerId);
+            await CompleteSuccessfulLeaveAsync(response, currentRoomCode);
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.BadRequest)
         {
@@ -222,9 +236,7 @@ public partial class RoomLobbyViewModel(
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
         {
-            await ExitLobbyAsync(CancellationToken.None);
-            clientSessionService.ClearSession();
-            navigationService.NavigateToCreateRoom();
+            await HandleLeaveRoomNotFoundAsync();
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.Conflict)
         {
@@ -244,10 +256,56 @@ public partial class RoomLobbyViewModel(
         }
     }
 
+    private bool TryGetLeaveSessionContext(out string roomCode, out string playerId)
+    {
+        roomCode = NormalizeRoomCode(clientSessionService.CurrentRoomCode ?? string.Empty);
+        playerId = NormalizePlayerId(clientSessionService.CurrentPlayerId ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(roomCode) || string.IsNullOrWhiteSpace(playerId))
+        {
+            return false;
+        }
+
+        _currentRoomCode = roomCode;
+        _currentPlayerId = playerId;
+        return true;
+    }
+
+    private async Task HandleMissingSessionBeforeLeaveAsync()
+    {
+        ShowErrorMessage("No active session found. Join or create a room first.");
+        clientSessionService.ClearSession();
+        await ExitLobbyAsync(CancellationToken.None);
+        navigationService.NavigateToCreateRoom();
+    }
+
+    private Task<LeaveRoomResponse> LeaveCurrentRoomAsync(string roomCode, string playerId)
+    {
+        return roomsApiClient.LeaveRoomAsync(
+            roomCode,
+            new LeaveRoomRequest(playerId),
+            CancellationToken.None);
+    }
+
+    private async Task CompleteSuccessfulLeaveAsync(LeaveRoomResponse response, string roomCode)
+    {
+        await ExitLobbyAsync(CancellationToken.None);
+        clientSessionService.ClearSession();
+        ResetLobbyState(response.RoomWasRemoved
+            ? "The room was closed while you were leaving. Returned to room setup."
+            : $"You left room {roomCode} successfully.", ScreenMessageKind.Info);
+        navigationService.NavigateToCreateRoom();
+    }
+
+    private async Task HandleLeaveRoomNotFoundAsync()
+    {
+        await ExitLobbyAsync(CancellationToken.None);
+        clientSessionService.ClearSession();
+        navigationService.NavigateToCreateRoom();
+    }
+
     private Task HandleLobbyUpdatedAsync(string roomCode)
     {
-        var normalizedRoomCode = NormalizeRoomCode(roomCode);
-        if (!_isLobbyActive || !string.Equals(normalizedRoomCode, _currentRoomCode, StringComparison.Ordinal))
+        if (!IsLobbyEventForCurrentRoom(roomCode))
         {
             return Task.CompletedTask;
         }
@@ -257,53 +315,81 @@ public partial class RoomLobbyViewModel(
 
     private Task HandleLobbyClosedAsync(string roomCode)
     {
-        var normalizedRoomCode = NormalizeRoomCode(roomCode);
-        if (!_isLobbyActive || !string.Equals(normalizedRoomCode, _currentRoomCode, StringComparison.Ordinal))
+        if (!IsLobbyEventForCurrentRoom(roomCode))
         {
             return Task.CompletedTask;
         }
 
         return RunOnCapturedContextAsync(async () =>
         {
-            await ExitLobbyAsync(CancellationToken.None);
-            clientSessionService.ClearSession();
-            ResetLobbyState($"The room {_currentRoomCode} was closed by the host. Returned to room setup.", ScreenMessageKind.Info);
-            navigationService.NavigateToCreateRoom();
+            await HandleLobbyClosedForCurrentRoomAsync();
         });
+    }
+
+    private bool IsLobbyEventForCurrentRoom(string roomCode)
+    {
+        var normalizedRoomCode = NormalizeRoomCode(roomCode);
+        return _isLobbyActive
+            && string.Equals(normalizedRoomCode, _currentRoomCode, StringComparison.Ordinal);
+    }
+
+    private async Task HandleLobbyClosedForCurrentRoomAsync()
+    {
+        await ExitLobbyAsync(CancellationToken.None);
+        clientSessionService.ClearSession();
+        ResetLobbyState($"The room {_currentRoomCode} was closed by the host. Returned to room setup.", ScreenMessageKind.Info);
+        navigationService.NavigateToCreateRoom();
     }
 
     private async Task QueueLobbyRefreshAsync(CancellationToken cancellationToken)
     {
-        await RunOnCapturedContextAsync(async () =>
-        {
-            _refreshRequested = true;
-            if (_isRefreshLoopRunning)
-            {
-                return;
-            }
+        await RunOnCapturedContextAsync(() => ProcessQueuedLobbyRefreshAsync(cancellationToken));
+    }
 
-            _isRefreshLoopRunning = true;
-            try
+    private async Task ProcessQueuedLobbyRefreshAsync(CancellationToken cancellationToken)
+    {
+        RequestLobbyRefresh();
+        if (_isRefreshLoopRunning)
+        {
+            return;
+        }
+
+        _isRefreshLoopRunning = true;
+        try
+        {
+            while (TryDequeueLobbyRefreshRequest(cancellationToken))
             {
-                while (_refreshRequested)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    _refreshRequested = false;
-                    await ExecuteLobbyRefreshAsync(cancellationToken);
-                }
+                await ExecuteLobbyRefreshAsync(cancellationToken);
             }
-            finally
-            {
-                _isRefreshLoopRunning = false;
-            }
-        });
+        }
+        finally
+        {
+            _isRefreshLoopRunning = false;
+        }
+    }
+
+    private void RequestLobbyRefresh()
+    {
+        _refreshRequested = true;
+    }
+
+    private bool TryDequeueLobbyRefreshRequest(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!_refreshRequested)
+        {
+            return false;
+        }
+
+        _refreshRequested = false;
+        return true;
     }
 
     private async Task ExecuteLobbyRefreshAsync(CancellationToken cancellationToken)
     {
         ClearScreenMessage();
 
-        var preserveCurrentLobbyState = _hasLobbyData;
+        var preserveCurrentLobbyState = HasLobbyData;
         SetBusyState(preserveCurrentLobbyState);
 
         try
@@ -334,16 +420,33 @@ public partial class RoomLobbyViewModel(
 
     private async Task EnsureRealtimeSubscriptionAsync(CancellationToken cancellationToken)
     {
-        if (!_isLobbyActive || string.IsNullOrWhiteSpace(_currentRoomCode) || IsLeaving)
+        if (!ShouldMaintainRealtimeSubscription())
         {
             return;
         }
 
-        if (string.Equals(_subscribedRoomCode, _currentRoomCode, StringComparison.Ordinal))
+        if (IsSubscribedToCurrentRoom())
         {
             return;
         }
 
+        await ReplaceRealtimeSubscriptionAsync(cancellationToken);
+    }
+
+    private bool ShouldMaintainRealtimeSubscription()
+    {
+        return _isLobbyActive
+            && !string.IsNullOrWhiteSpace(_currentRoomCode)
+            && !IsLeaving;
+    }
+
+    private bool IsSubscribedToCurrentRoom()
+    {
+        return string.Equals(_subscribedRoomCode, _currentRoomCode, StringComparison.Ordinal);
+    }
+
+    private async Task ReplaceRealtimeSubscriptionAsync(CancellationToken cancellationToken)
+    {
         if (!string.IsNullOrWhiteSpace(_subscribedRoomCode))
         {
             await roomLobbyRealtimeClient.UnsubscribeAsync(_subscribedRoomCode, cancellationToken);
@@ -402,7 +505,7 @@ public partial class RoomLobbyViewModel(
     {
         _currentRoomCode = NormalizeRoomCode(clientSessionService.CurrentRoomCode ?? string.Empty);
         _currentPlayerId = NormalizePlayerId(clientSessionService.CurrentPlayerId ?? string.Empty);
-        _currentUserDisplayName = NormalizeDisplayName(clientSessionService.DisplayName ?? string.Empty);
+        _snapshotState.ApplySessionDisplayName(clientSessionService.DisplayName ?? string.Empty);
 
         NotifyLobbyMetadataChanged();
 
@@ -516,37 +619,8 @@ public partial class RoomLobbyViewModel(
     private void ApplyLobbyState(GetRoomLobbyResponse response)
     {
         _currentRoomCode = NormalizeRoomCode(response.RoomCode);
-        RoomCode = string.IsNullOrWhiteSpace(_currentRoomCode) ? UnknownValue : _currentRoomCode;
-        RoomStatus = ToDisplayStatus(response.Status);
-
-        var hostPlayer = response.Players.FirstOrDefault(player => player.IsHost);
-        var currentPlayer = response.Players.FirstOrDefault(player => string.Equals(player.PlayerId, _currentPlayerId, StringComparison.Ordinal));
-        _hostDisplayName = NormalizeDisplayName(hostPlayer?.DisplayName ?? string.Empty);
-        if (currentPlayer is not null)
-        {
-            _currentUserDisplayName = NormalizeDisplayName(currentPlayer.DisplayName);
-            _currentUserRole = currentPlayer.IsHost ? "Host" : "Player";
-        }
-        else
-        {
-            _currentUserRole = UnknownValue;
-        }
-
-        Players.Clear();
-        for (var index = 0; index < response.Players.Count; index++)
-        {
-            var player = response.Players[index];
-            Players.Add(new LobbyPlayerItemViewModel(
-                player.PlayerId,
-                player.DisplayName,
-                player.IsHost,
-                string.Equals(player.PlayerId, _currentPlayerId, StringComparison.Ordinal),
-                index + 1));
-        }
-
-        _lastSuccessfulRefreshAt = DateTimeOffset.UtcNow;
-        NotifyLobbyMetadataChanged();
-        SetHasLobbyData(true);
+        _snapshotState.ApplyLobbySnapshot(response, _currentPlayerId);
+        NotifyLobbySnapshotChanged();
         RefreshCommand.NotifyCanExecuteChanged();
     }
 
@@ -626,15 +700,13 @@ public partial class RoomLobbyViewModel(
         OnPropertyChanged(nameof(LastSuccessfulRefreshText));
     }
 
-    private void SetHasLobbyData(bool value)
+    private void NotifyLobbySnapshotChanged()
     {
-        if (_hasLobbyData == value)
-        {
-            return;
-        }
-
-        _hasLobbyData = value;
+        OnPropertyChanged(nameof(RoomCode));
+        OnPropertyChanged(nameof(RoomStatus));
         OnPropertyChanged(nameof(HasLobbyData));
+        OnPropertyChanged(nameof(ShowLastSuccessfulLobbyHint));
+        NotifyLobbyMetadataChanged();
     }
 
     private static string NormalizeRoomCode(string roomCode)
@@ -651,37 +723,22 @@ public partial class RoomLobbyViewModel(
             : playerId.Trim();
     }
 
-    private static string NormalizeDisplayName(string displayName)
-    {
-        return string.IsNullOrWhiteSpace(displayName)
-            ? string.Empty
-            : displayName.Trim();
-    }
-
     private void ResetLobbyState(string message, ScreenMessageKind messageKind)
     {
-        Players.Clear();
-        RoomCode = UnknownValue;
-        RoomStatus = UnknownValue;
+        _snapshotState.Reset();
         ShowScreenMessage(message, messageKind);
         ClearRealtimeMessage();
         IsLoading = false;
         IsRefreshing = false;
         IsLeaving = false;
-        SetHasLobbyData(false);
         _currentRoomCode = string.Empty;
         _currentPlayerId = string.Empty;
-        _currentUserDisplayName = string.Empty;
-        _currentUserRole = UnknownValue;
-        _hostDisplayName = string.Empty;
-        _lastSuccessfulRefreshAt = null;
         _realtimeConnectionState = RealtimeConnectionState.Disconnected;
-        NotifyLobbyMetadataChanged();
+        NotifyLobbySnapshotChanged();
         NotifyRealtimeStateChanged();
         RefreshCommand.NotifyCanExecuteChanged();
         LeaveRoomCommand.NotifyCanExecuteChanged();
     }
-
 
     private static string BuildLobbyErrorMessage(HttpStatusCode? statusCode, bool preserveCurrentLobbyState)
     {
@@ -703,12 +760,4 @@ public partial class RoomLobbyViewModel(
         };
     }
 
-    private static string ToDisplayStatus(RoomStatusContract status)
-    {
-        return status switch
-        {
-            RoomStatusContract.WaitingForPlayers => "Waiting for players",
-            _ => "Unknown"
-        };
-    }
 }
