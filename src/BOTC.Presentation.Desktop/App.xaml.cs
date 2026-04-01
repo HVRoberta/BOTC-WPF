@@ -7,6 +7,9 @@ namespace BOTC.Presentation.Desktop;
 
 public partial class App
 {
+    private const string DesktopEnvironmentVariableName = "BOTC_ENVIRONMENT";
+    private const string DefaultDesktopEnvironment = "Development";
+
     private ServiceProvider? _serviceProvider;
 
     protected override void OnStartup(System.Windows.StartupEventArgs e)
@@ -36,13 +39,22 @@ public partial class App
     {
         var commandLineSwitchMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["--api-base-address"] = "Api:BaseAddress"
+            ["--api-base-url"] = "Api:BaseUrl",
+            ["--signalr-hub-url"] = "SignalR:HubUrl"
         };
 
+        var environmentName = Environment.GetEnvironmentVariable(DesktopEnvironmentVariableName);
+        if (string.IsNullOrWhiteSpace(environmentName))
+        {
+            environmentName = DefaultDesktopEnvironment;
+        }
+
         var appSettingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+        var environmentAppSettingsPath = Path.Combine(AppContext.BaseDirectory, $"appsettings.{environmentName}.json");
 
         return new ConfigurationBuilder()
             .AddJsonFile(appSettingsPath, optional: true, reloadOnChange: false)
+            .AddJsonFile(environmentAppSettingsPath, optional: true, reloadOnChange: false)
             .AddEnvironmentVariables(prefix: "BOTC_")
             .AddCommandLine(args, commandLineSwitchMappings)
             .Build();

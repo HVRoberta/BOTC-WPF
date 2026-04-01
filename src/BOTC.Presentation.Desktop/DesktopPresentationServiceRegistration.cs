@@ -1,4 +1,5 @@
-﻿using BOTC.Presentation.Desktop.Navigation;
+﻿using BOTC.Presentation.Desktop.Configuration;
+using BOTC.Presentation.Desktop.Navigation;
 using BOTC.Presentation.Desktop.Rooms;
 using BOTC.Presentation.Desktop.Rooms.CreateRoom;
 using BOTC.Presentation.Desktop.Rooms.JoinRoom;
@@ -11,24 +12,19 @@ namespace BOTC.Presentation.Desktop;
 
 public static class DesktopPresentationServiceRegistration
 {
-    private const string ApiBaseAddressConfigurationPath = "Api:BaseAddress";
-    private static readonly Uri DefaultRoomsApiBaseAddress = new("http://localhost:5000");
-
     public static IServiceCollection AddDesktopPresentation(this IServiceCollection services)
     {
-        return AddDesktopPresentation(services, DefaultRoomsApiBaseAddress);
+        throw new InvalidOperationException("Desktop configuration is required. Use AddDesktopPresentation(IServiceCollection, IConfiguration).");
     }
 
     public static IServiceCollection AddDesktopPresentation(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var roomsApiBaseAddress = ResolveRoomsApiBaseAddress(configuration);
-        return AddDesktopPresentation(services, roomsApiBaseAddress);
-    }
+        services.Configure<ApiOptions>(configuration.GetSection("Api"));
+        services.Configure<SignalROptions>(configuration.GetSection("SignalR"));
+        services.AddSingleton<IEndpointConfigurationService, EndpointConfigurationService>();
 
-    private static IServiceCollection AddDesktopPresentation(IServiceCollection services, Uri roomsApiBaseAddress)
-    {
         services.AddSingleton<MainWindow>();
         services.AddSingleton<MainWindowViewModel>();
 
@@ -38,30 +34,18 @@ public static class DesktopPresentationServiceRegistration
 
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IClientSessionService, ClientSessionService>();
-        services.AddSingleton<IRoomLobbyRealtimeClient>(_ => new RoomLobbyRealtimeClient(roomsApiBaseAddress));
-
-        services.AddHttpClient<IRoomsApiClient, RoomsApiClient>(client =>
+        services.AddSingleton<IRoomLobbyRealtimeClient>(provider =>
         {
-            client.BaseAddress = roomsApiBaseAddress;
+            var endpointConfiguration = provider.GetRequiredService<IEndpointConfigurationService>();
+            return new RoomLobbyRealtimeClient(endpointConfiguration.GetSignalRHubUri());
+        });
+
+        services.AddHttpClient<IRoomsApiClient, RoomsApiClient>((provider, client) =>
+        {
+            var endpointConfiguration = provider.GetRequiredService<IEndpointConfigurationService>();
+            client.BaseAddress = endpointConfiguration.GetApiBaseUri();
         });
 
         return services;
-    }
-
-    private static Uri ResolveRoomsApiBaseAddress(IConfiguration configuration)
-    {
-        var configuredBaseAddress = configuration[ApiBaseAddressConfigurationPath];
-        if (string.IsNullOrWhiteSpace(configuredBaseAddress))
-        {
-            return DefaultRoomsApiBaseAddress;
-        }
-
-        if (!Uri.TryCreate(configuredBaseAddress, UriKind.Absolute, out var parsedBaseAddress))
-        {
-            throw new InvalidOperationException(
-                $"Configuration value '{ApiBaseAddressConfigurationPath}' must be an absolute URI.");
-        }
-
-        return parsedBaseAddress;
     }
 }

@@ -23,7 +23,8 @@ internal sealed class RoomPlayerEntityConfiguration : IEntityTypeConfiguration<R
             .IsRequired();
 
         builder.Property(player => player.JoinedAtUtc)
-            .IsRequired();
+            .IsRequired()
+            .HasColumnType("timestamp with time zone");
 
         builder.Property(player => player.IsReady)
             .IsRequired();

@@ -18,8 +18,10 @@ public static class InfrastructureServiceRegistration
         this IServiceCollection services,
         string connectionString)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+
         services.AddDbContext<BotcDbContext>(options =>
-            options.UseSqlite(connectionString));
+            options.UseNpgsql(connectionString));
 
         services.AddScoped<IRoomRepository, RoomRepository>();
         services.AddScoped<IRoomJoinRepository, RoomRepository>();
