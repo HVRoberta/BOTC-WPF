@@ -1,7 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY BOTC.sln ./
 COPY src/BOTC.Application/BOTC.Application.csproj src/BOTC.Application/
 COPY src/BOTC.Contracts/BOTC.Contracts.csproj src/BOTC.Contracts/
 COPY src/BOTC.Infrastructure/BOTC.Infrastructure.csproj src/BOTC.Infrastructure/
