@@ -13,14 +13,14 @@ internal sealed class RoomEntityConfiguration : IEntityTypeConfiguration<RoomEnt
 
         builder.Property(room => room.Code)
             .IsRequired()
-            .HasMaxLength(6)
-            .IsFixedLength();
+            .HasMaxLength(6);
 
         builder.Property(room => room.Status)
             .IsRequired();
 
         builder.Property(room => room.CreatedAtUtc)
-            .IsRequired();
+            .IsRequired()
+            .HasColumnType("timestamp with time zone");
 
         builder.HasIndex(room => room.Code)
             .IsUnique();

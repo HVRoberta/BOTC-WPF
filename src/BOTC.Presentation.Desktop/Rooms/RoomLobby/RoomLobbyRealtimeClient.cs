@@ -10,13 +10,12 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
     private bool _isDisposed;
     private RealtimeConnectionState _connectionState = RealtimeConnectionState.Disconnected;
 
-    public RoomLobbyRealtimeClient(Uri roomsApiBaseAddress)
+    public RoomLobbyRealtimeClient(Uri hubUrl)
     {
-        ArgumentNullException.ThrowIfNull(roomsApiBaseAddress);
+        ArgumentNullException.ThrowIfNull(hubUrl);
 
-        var hubUri = new Uri(roomsApiBaseAddress, RoomLobbyHubContract.HubRoute);
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl(hubUri)
+            .WithUrl(hubUrl)
             .WithAutomaticReconnect()
             .Build();
 
@@ -196,4 +195,3 @@ public sealed class RoomLobbyRealtimeClient : IRoomLobbyRealtimeClient, IDisposa
         return roomCode.Trim().ToUpperInvariant();
     }
 }
-

@@ -21,6 +21,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\BOTC.Domain\BOTC.Domain.csproj" />
     <ProjectReference Include="..\..\src\BOTC.Application\BOTC.Application.csproj" />
+    <ProjectReference Include="..\..\src\BOTC.Infrastructure\BOTC.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\BOTC.Presentation.Api\BOTC.Presentation.Api.csproj" />
   </ItemGroup>
 
 </Project>

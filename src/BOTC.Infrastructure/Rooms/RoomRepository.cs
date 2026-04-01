@@ -6,8 +6,8 @@ using BOTC.Application.Features.Rooms.StartGame;
 using BOTC.Domain.Rooms;
 using BOTC.Infrastructure.Persistence;
 using BOTC.Infrastructure.Persistence.Rooms;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace BOTC.Infrastructure.Rooms;
 
@@ -21,6 +21,8 @@ public sealed class RoomRepository :
     private const int SqliteConstraintErrorCode = 19;
     private const int SqliteConstraintUniqueExtendedErrorCode = 2067;
     private const int SqliteConstraintForeignKeyExtendedErrorCode = 787;
+    private const string PostgresUniqueViolationSqlState = PostgresErrorCodes.UniqueViolation;
+    private const string PostgresForeignKeyViolationSqlState = PostgresErrorCodes.ForeignKeyViolation;
 
     private readonly BotcDbContext _dbContext;
 
@@ -343,15 +345,42 @@ public sealed class RoomRepository :
 
     private static bool IsUniqueConstraintViolation(DbUpdateException exception)
     {
-        return exception.InnerException is SqliteException sqliteException
-               && sqliteException.SqliteErrorCode == SqliteConstraintErrorCode
-               && sqliteException.SqliteExtendedErrorCode == SqliteConstraintUniqueExtendedErrorCode;
+        return exception.InnerException switch
+        {
+            PostgresException postgresException => postgresException.SqlState == PostgresUniqueViolationSqlState,
+            not null when IsSqliteConstraintViolation(
+                exception.InnerException,
+                SqliteConstraintErrorCode,
+                SqliteConstraintUniqueExtendedErrorCode) => true,
+            _ => false
+        };
     }
 
     private static bool IsForeignKeyConstraintViolation(DbUpdateException exception)
     {
-        return exception.InnerException is SqliteException sqliteException
-               && sqliteException.SqliteErrorCode == SqliteConstraintErrorCode
-               && sqliteException.SqliteExtendedErrorCode == SqliteConstraintForeignKeyExtendedErrorCode;
+        return exception.InnerException switch
+        {
+            PostgresException postgresException => postgresException.SqlState == PostgresForeignKeyViolationSqlState,
+            not null when IsSqliteConstraintViolation(
+                exception.InnerException,
+                SqliteConstraintErrorCode,
+                SqliteConstraintForeignKeyExtendedErrorCode) => true,
+            _ => false
+        };
+    }
+
+    private static bool IsSqliteConstraintViolation(Exception exception, int errorCode, int extendedErrorCode)
+    {
+        var exceptionType = exception.GetType();
+        if (!string.Equals(exceptionType.FullName, "Microsoft.Data.Sqlite.SqliteException", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var sqliteErrorCode = exceptionType.GetProperty("SqliteErrorCode")?.GetValue(exception) as int?;
+        var sqliteExtendedErrorCode = exceptionType.GetProperty("SqliteExtendedErrorCode")?.GetValue(exception) as int?;
+
+        return sqliteErrorCode == errorCode
+               && sqliteExtendedErrorCode == extendedErrorCode;
     }
 }
