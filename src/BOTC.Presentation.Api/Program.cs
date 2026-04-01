@@ -8,8 +8,6 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
-
 const string corsPolicyName = "ConfiguredCors";
 
 var connectionString = builder.Configuration.GetConnectionString("Default");
@@ -55,6 +53,12 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<IRoomLobbyNotifier, SignalRRoomLobbyNotifier>();
 
 var app = builder.Build();
+
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(port))
+{
+    app.Urls.Add($"http://*:{port}");
+}
 
 using (var scope = app.Services.CreateScope())
 {
