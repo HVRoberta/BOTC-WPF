@@ -1,4 +1,5 @@
-﻿using BOTC.Application.Abstractions.Persistence;
+﻿using BOTC.Application.Abstractions.Events;
+using BOTC.Application.Abstractions.Persistence;
 using BOTC.Application.Abstractions.Services;
 using BOTC.Domain.Rooms;
 
@@ -10,11 +11,16 @@ public sealed class CreateRoomHandler
 
     private readonly IRoomRepository _roomRepository;
     private readonly IRoomCodeGenerator _roomCodeGenerator;
+    private readonly IDomainEventDispatcher _domainEventDispatcher;
 
-    public CreateRoomHandler(IRoomRepository roomRepository, IRoomCodeGenerator roomCodeGenerator)
+    public CreateRoomHandler(
+        IRoomRepository roomRepository,
+        IRoomCodeGenerator roomCodeGenerator,
+        IDomainEventDispatcher domainEventDispatcher)
     {
         _roomRepository = roomRepository ?? throw new ArgumentNullException(nameof(roomRepository));
         _roomCodeGenerator = roomCodeGenerator ?? throw new ArgumentNullException(nameof(roomCodeGenerator));
+        _domainEventDispatcher = domainEventDispatcher ?? throw new ArgumentNullException(nameof(domainEventDispatcher));
     }
 
     public async Task<CreateRoomResult> HandleAsync(CreateRoomCommand command, CancellationToken cancellationToken)
@@ -37,6 +43,16 @@ public sealed class CreateRoomHandler
             if (!added)
             {
                 continue;
+            }
+
+            // Dispatch domain events after successful persistence.
+            try
+            {
+                await _domainEventDispatcher.DispatchAsync(room.UncommittedEvents, cancellationToken);
+            }
+            finally
+            {
+                room.ClearUncommittedEvents();
             }
 
             return new CreateRoomResult(

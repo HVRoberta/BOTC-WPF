@@ -1,15 +1,21 @@
+using BOTC.Application.Abstractions.Events;
 using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Features.Rooms.SetPlayerReady;
 
 public sealed class SetPlayerReadyHandler
 {
-    private readonly IRoomSetPlayerReadyRepository roomSetPlayerReadyRepository;
+    private readonly IRoomSetPlayerReadyRepository _roomSetPlayerReadyRepository;
+    private readonly IDomainEventDispatcher _domainEventDispatcher;
 
-    public SetPlayerReadyHandler(IRoomSetPlayerReadyRepository roomSetPlayerReadyRepository)
+    public SetPlayerReadyHandler(
+        IRoomSetPlayerReadyRepository roomSetPlayerReadyRepository,
+        IDomainEventDispatcher domainEventDispatcher)
     {
-        this.roomSetPlayerReadyRepository = roomSetPlayerReadyRepository
+        _roomSetPlayerReadyRepository = roomSetPlayerReadyRepository
             ?? throw new ArgumentNullException(nameof(roomSetPlayerReadyRepository));
+        _domainEventDispatcher = domainEventDispatcher
+            ?? throw new ArgumentNullException(nameof(domainEventDispatcher));
     }
 
     public async Task<SetPlayerReadyResult> HandleAsync(SetPlayerReadyCommand command, CancellationToken cancellationToken)
@@ -18,7 +24,7 @@ public sealed class SetPlayerReadyHandler
 
         var roomCode = new RoomCode(command.RoomCode);
         var playerId = ParsePlayerId(command.PlayerId);
-        var room = await roomSetPlayerReadyRepository.GetByCodeAsync(roomCode, cancellationToken);
+        var room = await _roomSetPlayerReadyRepository.GetByCodeAsync(roomCode, cancellationToken);
         if (room is null)
         {
             throw new RoomSetPlayerReadyRoomNotFoundException(roomCode);
@@ -39,7 +45,7 @@ public sealed class SetPlayerReadyHandler
 
         try
         {
-            var saved = await roomSetPlayerReadyRepository.TrySaveAsync(room, cancellationToken);
+            var saved = await _roomSetPlayerReadyRepository.TrySaveAsync(room, cancellationToken);
             if (!saved)
             {
                 throw new RoomSetPlayerReadyConflictException("Unable to update player readiness due to a conflicting room state.");
@@ -48,6 +54,16 @@ public sealed class SetPlayerReadyHandler
         catch (RoomSetPlayerReadySaveRoomMissingException)
         {
             throw new RoomSetPlayerReadyRoomNotFoundException(roomCode);
+        }
+
+        // Dispatch domain events after successful persistence.
+        try
+        {
+            await _domainEventDispatcher.DispatchAsync(room.UncommittedEvents, cancellationToken);
+        }
+        finally
+        {
+            room.ClearUncommittedEvents();
         }
 
         return new SetPlayerReadyResult(roomCode, playerId, command.IsReady);

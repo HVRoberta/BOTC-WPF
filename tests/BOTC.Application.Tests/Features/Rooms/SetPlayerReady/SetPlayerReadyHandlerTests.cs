@@ -1,4 +1,5 @@
 using BOTC.Application.Features.Rooms.SetPlayerReady;
+using BOTC.Application.Tests.Fakes;
 using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Tests.Features.Rooms.SetPlayerReady;
@@ -10,8 +11,10 @@ public sealed class SetPlayerReadyHandlerTests
     {
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
         var alice = room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
+        room.ClearUncommittedEvents(); // simulate room loaded fresh from DB (no prior events)
         var repository = new FakeRoomSetPlayerReadyRepository(room);
-        var handler = new SetPlayerReadyHandler(repository);
+        var dispatcher = new FakeDomainEventDispatcher();
+        var handler = new SetPlayerReadyHandler(repository, dispatcher);
 
         var result = await handler.HandleAsync(
             new SetPlayerReadyCommand("AB12CD", alice.Id.Value.ToString(), true),
@@ -21,6 +24,7 @@ public sealed class SetPlayerReadyHandlerTests
         Assert.Equal(alice.Id, result.PlayerId);
         Assert.True(result.IsReady);
         Assert.Equal(1, repository.TrySaveCallCount);
+        Assert.Single(dispatcher.DispatchedEvents);
     }
 
     [Fact]
@@ -28,7 +32,8 @@ public sealed class SetPlayerReadyHandlerTests
     {
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
         var repository = new FakeRoomSetPlayerReadyRepository(room);
-        var handler = new SetPlayerReadyHandler(repository);
+        var dispatcher = new FakeDomainEventDispatcher();
+        var handler = new SetPlayerReadyHandler(repository, dispatcher);
         var missingPlayerId = RoomPlayerId.New();
 
         var act = async () => await handler.HandleAsync(

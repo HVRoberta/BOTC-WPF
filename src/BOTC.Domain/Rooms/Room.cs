@@ -1,8 +1,9 @@
 ﻿using System.Collections.ObjectModel;
+using BOTC.Domain.Rooms.Events;
 
 namespace BOTC.Domain.Rooms;
 
-public sealed class Room
+public sealed class Room : AggregateRoot
 {
     public const int MinPlayersToStartGame = 2;
     private const int MaxPlayers = 20;
@@ -49,12 +50,21 @@ public sealed class Room
             RoomPlayerRole.Host,
             createdAtUtc);
 
-        return new Room(
+        var room = new Room(
             id,
             code,
             [hostPlayer],
             RoomStatus.WaitingForPlayers,
             createdAtUtc);
+
+        room.RaiseDomainEvent(new RoomCreatedDomainEvent(
+            id,
+            code,
+            hostPlayer.Id,
+            hostPlayer.DisplayName,
+            room.CreatedAtUtc)); // use the UTC-normalized value stored on the aggregate
+
+        return room;
     }
 
     public static Room Rehydrate(
@@ -87,6 +97,13 @@ public sealed class Room
         var player = RoomPlayer.Create(RoomPlayerId.New(), displayName, RoomPlayerRole.Player, joinedAtUtc);
         players.Add(player);
 
+        RaiseDomainEvent(new PlayerJoinedRoomDomainEvent(
+            Id,
+            Code,
+            player.Id,
+            player.DisplayName,
+            joinedAtUtc));
+
         return player;
     }
 
@@ -101,6 +118,15 @@ public sealed class Room
         if (players.Count == 1)
         {
             players.RemoveAt(0);
+            
+            RaiseDomainEvent(new PlayerLeftRoomDomainEvent(
+                Id,
+                Code,
+                playerId,
+                null,
+                IsRoomDeleted: true,
+                DateTime.UtcNow));
+
             return new RoomLeaveOutcome(true, null);
         }
 
@@ -109,6 +135,15 @@ public sealed class Room
         if (leavingPlayer.Role != RoomPlayerRole.Host)
         {
             EnsurePlayerInvariants(players);
+            
+            RaiseDomainEvent(new PlayerLeftRoomDomainEvent(
+                Id,
+                Code,
+                playerId,
+                null,
+                IsRoomDeleted: false,
+                DateTime.UtcNow));
+
             return new RoomLeaveOutcome(false, null);
         }
 
@@ -121,6 +156,14 @@ public sealed class Room
         players[successorIndex] = successor.WithRole(RoomPlayerRole.Host);
 
         EnsurePlayerInvariants(players);
+
+        RaiseDomainEvent(new PlayerLeftRoomDomainEvent(
+            Id,
+            Code,
+            playerId,
+            successor.Id,
+            IsRoomDeleted: false,
+            DateTime.UtcNow));
 
         return new RoomLeaveOutcome(false, successor.Id);
     }
@@ -151,6 +194,13 @@ public sealed class Room
         }
 
         players[playerIndex] = players[playerIndex].WithReadyState(isReady);
+
+        RaiseDomainEvent(new PlayerReadyStateChangedDomainEvent(
+            Id,
+            Code,
+            playerId,
+            isReady,
+            DateTime.UtcNow));
     }
 
     public RoomStartGameOutcome StartGame(RoomPlayerId starterPlayerId)
@@ -186,6 +236,12 @@ public sealed class Room
         }
 
         Status = RoomStatus.InProgress;
+
+        RaiseDomainEvent(new GameStartedDomainEvent(
+            Id,
+            Code,
+            DateTime.UtcNow));
+
         return RoomStartGameOutcome.Started();
     }
 

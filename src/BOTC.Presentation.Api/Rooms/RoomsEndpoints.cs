@@ -6,7 +6,6 @@ using BOTC.Application.Features.Rooms.SetPlayerReady;
 using BOTC.Application.Features.Rooms.StartGame;
 using BOTC.Contracts.Rooms;
 using Microsoft.AspNetCore.Mvc;
-using BOTC.Presentation.Api.Rooms.Realtime;
 
 namespace BOTC.Presentation.Api.Rooms;
 
@@ -66,7 +65,6 @@ public static class RoomsEndpoints
     private static async Task<IResult> CreateRoomAsync(
         CreateRoomRequest request,
         CreateRoomHandler handler,
-        IRoomLobbyNotifier roomLobbyNotifier,
         CancellationToken cancellationToken)
     {
         if (request is null || string.IsNullOrWhiteSpace(request.HostDisplayName))
@@ -84,8 +82,6 @@ public static class RoomsEndpoints
             var command = CreateRoomMappings.ToCommand(request);
             var result = await handler.HandleAsync(command, cancellationToken);
             var response = CreateRoomMappings.ToResponse(result);
-
-            await roomLobbyNotifier.NotifyLobbyUpdatedAsync(response.RoomCode, CancellationToken.None);
 
             return Results.Created($"/api/rooms/{response.RoomId}", response);
         }
@@ -144,7 +140,6 @@ public static class RoomsEndpoints
         string roomCode,
         JoinRoomRequest request,
         JoinRoomHandler handler,
-        IRoomLobbyNotifier roomLobbyNotifier,
         CancellationToken cancellationToken)
     {
         if (request is null || string.IsNullOrWhiteSpace(request.DisplayName))
@@ -162,8 +157,6 @@ public static class RoomsEndpoints
             var command = JoinRoomMappings.ToCommand(roomCode, request);
             var result = await handler.HandleAsync(command, cancellationToken);
             var response = JoinRoomMappings.ToResponse(result);
-
-            await roomLobbyNotifier.NotifyLobbyUpdatedAsync(response.RoomCode, CancellationToken.None);
 
             return Results.Ok(response);
         }
@@ -200,7 +193,6 @@ public static class RoomsEndpoints
         string roomCode,
         LeaveRoomRequest request,
         LeaveRoomHandler handler,
-        IRoomLobbyNotifier roomLobbyNotifier,
         CancellationToken cancellationToken)
     {
         if (request is null || string.IsNullOrWhiteSpace(request.PlayerId))
@@ -218,15 +210,6 @@ public static class RoomsEndpoints
             var command = LeaveRoomMappings.ToCommand(roomCode, request);
             var result = await handler.HandleAsync(command, cancellationToken);
             var response = LeaveRoomMappings.ToResponse(result);
-
-            if (response.RoomWasRemoved)
-            {
-                await roomLobbyNotifier.NotifyLobbyClosedAsync(response.RoomCode, CancellationToken.None);
-            }
-            else
-            {
-                await roomLobbyNotifier.NotifyLobbyUpdatedAsync(response.RoomCode, CancellationToken.None);
-            }
 
             return Results.Ok(response);
         }
@@ -272,7 +255,6 @@ public static class RoomsEndpoints
         string roomCode,
         SetPlayerReadyRequest request,
         SetPlayerReadyHandler handler,
-        IRoomLobbyNotifier roomLobbyNotifier,
         CancellationToken cancellationToken)
     {
         if (request is null || string.IsNullOrWhiteSpace(request.PlayerId))
@@ -285,8 +267,6 @@ public static class RoomsEndpoints
             var command = SetPlayerReadyMappings.ToCommand(roomCode, request);
             var result = await handler.HandleAsync(command, cancellationToken);
             var response = SetPlayerReadyMappings.ToResponse(result);
-
-            await roomLobbyNotifier.NotifyLobbyUpdatedAsync(response.RoomCode, CancellationToken.None);
 
             return Results.Ok(response);
         }
@@ -312,7 +292,6 @@ public static class RoomsEndpoints
         string roomCode,
         StartGameRequest request,
         StartGameHandler handler,
-        IRoomLobbyNotifier roomLobbyNotifier,
         CancellationToken cancellationToken)
     {
         if (request is null || string.IsNullOrWhiteSpace(request.StarterPlayerId))
@@ -325,11 +304,6 @@ public static class RoomsEndpoints
             var command = StartGameMappings.ToCommand(roomCode, request);
             var result = await handler.HandleAsync(command, cancellationToken);
             var response = StartGameMappings.ToResponse(result);
-
-            if (response.IsStarted)
-            {
-                await roomLobbyNotifier.NotifyLobbyUpdatedAsync(response.RoomCode, CancellationToken.None);
-            }
 
             return Results.Ok(response);
         }

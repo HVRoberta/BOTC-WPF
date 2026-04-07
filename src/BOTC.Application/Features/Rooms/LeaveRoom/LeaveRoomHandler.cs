@@ -1,15 +1,25 @@
-﻿using BOTC.Domain.Rooms;
+﻿using BOTC.Application.Abstractions.Events;
+using BOTC.Domain.Rooms;
+
 namespace BOTC.Application.Features.Rooms.LeaveRoom;
+
 public sealed class LeaveRoomHandler
 {
     private readonly IRoomLeaveRepository _roomLeaveRepository;
-    public LeaveRoomHandler(IRoomLeaveRepository roomLeaveRepository)
+    private readonly IDomainEventDispatcher _domainEventDispatcher;
+
+    public LeaveRoomHandler(
+        IRoomLeaveRepository roomLeaveRepository,
+        IDomainEventDispatcher domainEventDispatcher)
     {
         _roomLeaveRepository = roomLeaveRepository ?? throw new ArgumentNullException(nameof(roomLeaveRepository));
+        _domainEventDispatcher = domainEventDispatcher ?? throw new ArgumentNullException(nameof(domainEventDispatcher));
     }
+
     public async Task<LeaveRoomResult> HandleAsync(LeaveRoomCommand command, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
+
         var roomCode = new RoomCode(command.RoomCode);
         var playerId = ParsePlayerId(command.PlayerId);
         var room = await _roomLeaveRepository.GetByCodeAsync(roomCode, cancellationToken);
@@ -17,6 +27,7 @@ public sealed class LeaveRoomHandler
         {
             throw new RoomLeaveRoomNotFoundException(roomCode);
         }
+
         RoomLeaveOutcome outcome;
         try
         {
@@ -26,6 +37,7 @@ public sealed class LeaveRoomHandler
         {
             throw new RoomLeavePlayerNotFoundException(roomCode, playerId);
         }
+
         if (outcome.RoomWasRemoved)
         {
             var deleted = await _roomLeaveRepository.TryDeleteAsync(room.Id, cancellationToken);
@@ -49,14 +61,27 @@ public sealed class LeaveRoomHandler
                 throw new RoomLeaveRoomNotFoundException(roomCode);
             }
         }
+
+        // Dispatch domain events after successful persistence.
+        try
+        {
+            await _domainEventDispatcher.DispatchAsync(room.UncommittedEvents, cancellationToken);
+        }
+        finally
+        {
+            room.ClearUncommittedEvents();
+        }
+
         return new LeaveRoomResult(roomCode, playerId, outcome.RoomWasRemoved, outcome.NewHostPlayerId);
     }
+
     private static RoomPlayerId ParsePlayerId(string playerId)
     {
         if (!Guid.TryParse(playerId, out var parsedPlayerId))
         {
             throw new ArgumentException("PlayerId must be a valid GUID.", nameof(playerId));
         }
+
         return new RoomPlayerId(parsedPlayerId);
     }
 }
