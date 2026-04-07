@@ -1,4 +1,5 @@
 ﻿using BOTC.Application;
+using BOTC.Application.Abstractions.Realtime;
 using BOTC.Contracts.Rooms;
 using BOTC.Infrastructure;
 using BOTC.Infrastructure.Persistence;
@@ -50,7 +51,9 @@ builder.Services.AddInfrastructure(connectionString);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
-builder.Services.AddSingleton<IRoomLobbyNotifier, SignalRRoomLobbyNotifier>();
+
+// Wire the Application-layer IRoomLobbyNotifier to the Presentation SignalR implementation.
+builder.Services.AddScoped<IRoomLobbyNotifier, SignalRRoomLobbyNotifier>();
 
 var app = builder.Build();
 

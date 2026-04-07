@@ -1,3 +1,4 @@
+using BOTC.Application.Abstractions.Events;
 using BOTC.Application.Abstractions.Persistence;
 using BOTC.Application.Abstractions.Services;
 using BOTC.Application.Features.Rooms.GetRoomLobby;
@@ -5,6 +6,8 @@ using BOTC.Application.Features.Rooms.JoinRoom;
 using BOTC.Application.Features.Rooms.LeaveRoom;
 using BOTC.Application.Features.Rooms.SetPlayerReady;
 using BOTC.Application.Features.Rooms.StartGame;
+using BOTC.Domain.Rooms.Events;
+using BOTC.Infrastructure.Eventing;
 using BOTC.Infrastructure.Persistence;
 using BOTC.Infrastructure.Rooms;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +33,14 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IRoomStartGameRepository, RoomRepository>();
         services.AddScoped<IRoomLobbyQueryService, RoomLobbyQueryService>();
         services.AddSingleton<IRoomCodeGenerator, RandomRoomCodeGenerator>();
+
+        services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+
+        services.AddScoped<IDomainEventHandler<RoomCreatedDomainEvent>, RoomCreatedEventHandler>();
+        services.AddScoped<IDomainEventHandler<PlayerJoinedRoomDomainEvent>, PlayerJoinedRoomEventHandler>();
+        services.AddScoped<IDomainEventHandler<PlayerLeftRoomDomainEvent>, PlayerLeftRoomEventHandler>();
+        services.AddScoped<IDomainEventHandler<PlayerReadyStateChangedDomainEvent>, PlayerReadyStateChangedEventHandler>();
+        services.AddScoped<IDomainEventHandler<GameStartedDomainEvent>, GameStartedEventHandler>();
 
         return services;
     }

@@ -1,4 +1,5 @@
 ﻿using BOTC.Application.Features.Rooms.LeaveRoom;
+using BOTC.Application.Tests.Fakes;
 using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Tests.Features.Rooms.LeaveRoom;
@@ -8,10 +9,19 @@ public sealed class LeaveRoomHandlerTests
     [Fact]
     public void Constructor_WhenRepositoryIsNull_ThrowsArgumentNullException()
     {
-        Action act = () => _ = new LeaveRoomHandler(null!);
+        Action act = () => _ = new LeaveRoomHandler(null!, new FakeDomainEventDispatcher());
 
         var exception = Assert.Throws<ArgumentNullException>(act);
         Assert.Equal("roomLeaveRepository", exception.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_WhenDispatcherIsNull_ThrowsArgumentNullException()
+    {
+        Action act = () => _ = new LeaveRoomHandler(new FakeRoomLeaveRepository(null), null!);
+
+        var exception = Assert.Throws<ArgumentNullException>(act);
+        Assert.Equal("domainEventDispatcher", exception.ParamName);
     }
 
     [Fact]
@@ -20,8 +30,10 @@ public sealed class LeaveRoomHandlerTests
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
         var alice = room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
         room.JoinPlayer("Bob", DateTime.UtcNow.AddSeconds(2));
+        room.ClearUncommittedEvents(); // simulate room loaded fresh from DB (no prior events)
         var repository = new FakeRoomLeaveRepository(room);
-        var handler = new LeaveRoomHandler(repository);
+        var dispatcher = new FakeDomainEventDispatcher();
+        var handler = new LeaveRoomHandler(repository, dispatcher);
 
         var result = await handler.HandleAsync(
             new LeaveRoomCommand("AB12CD", room.HostPlayerId.Value.ToString()),
@@ -31,14 +43,17 @@ public sealed class LeaveRoomHandlerTests
         Assert.Equal(alice.Id, result.NewHostPlayerId);
         Assert.Equal(1, repository.TrySaveCallCount);
         Assert.Equal(0, repository.TryDeleteCallCount);
+        Assert.Single(dispatcher.DispatchedEvents);
     }
 
     [Fact]
     public async Task HandleAsync_WhenLastPlayerLeaves_DeletesRoomAndReturnsRemovedOutcome()
     {
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+        room.ClearUncommittedEvents(); // simulate room loaded fresh from DB (no prior events)
         var repository = new FakeRoomLeaveRepository(room);
-        var handler = new LeaveRoomHandler(repository);
+        var dispatcher = new FakeDomainEventDispatcher();
+        var handler = new LeaveRoomHandler(repository, dispatcher);
 
         var result = await handler.HandleAsync(
             new LeaveRoomCommand("AB12CD", room.HostPlayerId.Value.ToString()),
@@ -48,6 +63,7 @@ public sealed class LeaveRoomHandlerTests
         Assert.Null(result.NewHostPlayerId);
         Assert.Equal(0, repository.TrySaveCallCount);
         Assert.Equal(1, repository.TryDeleteCallCount);
+        Assert.Single(dispatcher.DispatchedEvents);
     }
 
     [Fact]
@@ -55,7 +71,8 @@ public sealed class LeaveRoomHandlerTests
     {
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
         var repository = new FakeRoomLeaveRepository(room);
-        var handler = new LeaveRoomHandler(repository);
+        var dispatcher = new FakeDomainEventDispatcher();
+        var handler = new LeaveRoomHandler(repository, dispatcher);
         var missingPlayerId = RoomPlayerId.New();
 
         var act = async () => await handler.HandleAsync(

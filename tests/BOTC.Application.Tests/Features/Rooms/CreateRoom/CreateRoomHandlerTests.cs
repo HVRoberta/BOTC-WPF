@@ -1,6 +1,7 @@
 ﻿using BOTC.Application.Abstractions.Persistence;
 using BOTC.Application.Abstractions.Services;
 using BOTC.Application.Features.Rooms.CreateRoom;
+using BOTC.Application.Tests.Fakes;
 using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Tests.Features.Rooms.CreateRoom;
@@ -12,9 +13,10 @@ public sealed class CreateRoomHandlerTests
     {
         // Arrange
         var generator = new FakeRoomCodeGenerator(["AB12CD"]);
+        var dispatcher = new FakeDomainEventDispatcher();
 
         // Act
-        Action act = () => _ = new CreateRoomHandler(null!, generator);
+        Action act = () => _ = new CreateRoomHandler(null!, generator, dispatcher);
 
         // Assert
         var exception = Assert.Throws<ArgumentNullException>(act);
@@ -26,9 +28,10 @@ public sealed class CreateRoomHandlerTests
     {
         // Arrange
         var repository = new FakeRoomRepository();
+        var dispatcher = new FakeDomainEventDispatcher();
 
         // Act
-        Action act = () => _ = new CreateRoomHandler(repository, null!);
+        Action act = () => _ = new CreateRoomHandler(repository, null!, dispatcher);
 
         // Assert
         var exception = Assert.Throws<ArgumentNullException>(act);
@@ -36,10 +39,28 @@ public sealed class CreateRoomHandlerTests
     }
 
     [Fact]
+    public void Constructor_WhenDispatcherIsNull_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var repository = new FakeRoomRepository();
+        var generator = new FakeRoomCodeGenerator(["AB12CD"]);
+
+        // Act
+        Action act = () => _ = new CreateRoomHandler(repository, generator, null!);
+
+        // Assert
+        var exception = Assert.Throws<ArgumentNullException>(act);
+        Assert.Equal("domainEventDispatcher", exception.ParamName);
+    }
+
+    [Fact]
     public async Task HandleAsync_WhenCommandIsNull_ThrowsArgumentNullException()
     {
         // Arrange
-        var handler = new CreateRoomHandler(new FakeRoomRepository(), new FakeRoomCodeGenerator(["AB12CD"]));
+        var handler = new CreateRoomHandler(
+            new FakeRoomRepository(),
+            new FakeRoomCodeGenerator(["AB12CD"]),
+            new FakeDomainEventDispatcher());
 
         // Act
         var act = async () => await handler.HandleAsync(null!, CancellationToken.None);
@@ -55,7 +76,8 @@ public sealed class CreateRoomHandlerTests
         // Arrange
         var repository = new FakeRoomRepository();
         var generator = new FakeRoomCodeGenerator(["AB12CD"]);
-        var handler = new CreateRoomHandler(repository, generator);
+        var dispatcher = new FakeDomainEventDispatcher();
+        var handler = new CreateRoomHandler(repository, generator, dispatcher);
         var command = new CreateRoomCommand("Host");
         var before = DateTime.UtcNow;
 
@@ -82,7 +104,8 @@ public sealed class CreateRoomHandlerTests
         repository.SeedExistingCode("AB12CD");
 
         var generator = new FakeRoomCodeGenerator(["AB12CD", "EF34GH"]);
-        var handler = new CreateRoomHandler(repository, generator);
+        var dispatcher = new FakeDomainEventDispatcher();
+        var handler = new CreateRoomHandler(repository, generator, dispatcher);
         var command = new CreateRoomCommand("Host");
 
         // Act
@@ -102,7 +125,8 @@ public sealed class CreateRoomHandlerTests
         repository.SeedExistingCode("AB12CD");
 
         var generator = new FakeRoomCodeGenerator(Enumerable.Repeat("AB12CD", 10));
-        var handler = new CreateRoomHandler(repository, generator);
+        var dispatcher = new FakeDomainEventDispatcher();
+        var handler = new CreateRoomHandler(repository, generator, dispatcher);
         var command = new CreateRoomCommand("Host");
 
         // Act
@@ -121,7 +145,8 @@ public sealed class CreateRoomHandlerTests
         // Arrange
         var repository = new FakeRoomRepository();
         var generator = new FakeRoomCodeGenerator(["abc"]);
-        var handler = new CreateRoomHandler(repository, generator);
+        var dispatcher = new FakeDomainEventDispatcher();
+        var handler = new CreateRoomHandler(repository, generator, dispatcher);
         var command = new CreateRoomCommand("Host");
 
         // Act
@@ -140,7 +165,8 @@ public sealed class CreateRoomHandlerTests
         var repositoryException = new InvalidOperationException("Repository failure");
         var repository = new FakeRoomRepository(repositoryException);
         var generator = new FakeRoomCodeGenerator(["AB12CD"]);
-        var handler = new CreateRoomHandler(repository, generator);
+        var dispatcher = new FakeDomainEventDispatcher();
+        var handler = new CreateRoomHandler(repository, generator, dispatcher);
         var command = new CreateRoomCommand("Host");
 
         // Act
@@ -159,7 +185,8 @@ public sealed class CreateRoomHandlerTests
         // Arrange
         var repository = new FakeRoomRepository();
         var generator = new FakeRoomCodeGenerator(["AB12CD"]);
-        var handler = new CreateRoomHandler(repository, generator);
+        var dispatcher = new FakeDomainEventDispatcher();
+        var handler = new CreateRoomHandler(repository, generator, dispatcher);
         var command = new CreateRoomCommand("Host");
 
         using var cancellationTokenSource = new CancellationTokenSource();

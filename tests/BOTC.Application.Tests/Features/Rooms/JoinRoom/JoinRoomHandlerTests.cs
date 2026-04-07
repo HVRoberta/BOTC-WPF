@@ -1,4 +1,5 @@
 ﻿using BOTC.Application.Features.Rooms.JoinRoom;
+using BOTC.Application.Tests.Fakes;
 using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Tests.Features.Rooms.JoinRoom;
@@ -8,16 +9,25 @@ public sealed class JoinRoomHandlerTests
     [Fact]
     public void Constructor_WhenRepositoryIsNull_ThrowsArgumentNullException()
     {
-        Action act = () => _ = new JoinRoomHandler(null!);
+        Action act = () => _ = new JoinRoomHandler(null!, new FakeDomainEventDispatcher());
 
         var exception = Assert.Throws<ArgumentNullException>(act);
         Assert.Equal("roomJoinRepository", exception.ParamName);
     }
 
     [Fact]
+    public void Constructor_WhenDispatcherIsNull_ThrowsArgumentNullException()
+    {
+        Action act = () => _ = new JoinRoomHandler(new FakeRoomJoinRepository(), null!);
+
+        var exception = Assert.Throws<ArgumentNullException>(act);
+        Assert.Equal("domainEventDispatcher", exception.ParamName);
+    }
+
+    [Fact]
     public async Task HandleAsync_WhenCommandIsNull_ThrowsArgumentNullException()
     {
-        var handler = new JoinRoomHandler(new FakeRoomJoinRepository());
+        var handler = new JoinRoomHandler(new FakeRoomJoinRepository(), new FakeDomainEventDispatcher());
 
         var act = async () => await handler.HandleAsync(null!, CancellationToken.None);
 
@@ -29,7 +39,7 @@ public sealed class JoinRoomHandlerTests
     public async Task HandleAsync_WhenRoomCodeIsInvalid_ThrowsArgumentExceptionBeforeRepositoryCall()
     {
         var repository = new FakeRoomJoinRepository();
-        var handler = new JoinRoomHandler(repository);
+        var handler = new JoinRoomHandler(repository, new FakeDomainEventDispatcher());
 
         var act = async () => await handler.HandleAsync(new JoinRoomCommand("abc", "Alice"), CancellationToken.None);
 
@@ -41,7 +51,7 @@ public sealed class JoinRoomHandlerTests
     public async Task HandleAsync_WhenRoomDoesNotExist_ThrowsRoomJoinNotFoundException()
     {
         var repository = new FakeRoomJoinRepository();
-        var handler = new JoinRoomHandler(repository);
+        var handler = new JoinRoomHandler(repository, new FakeDomainEventDispatcher());
 
         var act = async () => await handler.HandleAsync(new JoinRoomCommand("AB12CD", "Alice"), CancellationToken.None);
 
@@ -53,8 +63,10 @@ public sealed class JoinRoomHandlerTests
     public async Task HandleAsync_WhenJoinSucceeds_ReturnsJoinedPlayer()
     {
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+        room.ClearUncommittedEvents(); // simulate room loaded fresh from DB (no prior events)
         var repository = new FakeRoomJoinRepository(room);
-        var handler = new JoinRoomHandler(repository);
+        var dispatcher = new FakeDomainEventDispatcher();
+        var handler = new JoinRoomHandler(repository, dispatcher);
 
         var result = await handler.HandleAsync(new JoinRoomCommand("AB12CD", "Alice"), CancellationToken.None);
 
@@ -62,6 +74,7 @@ public sealed class JoinRoomHandlerTests
         Assert.Equal("Alice", result.DisplayName);
         Assert.NotEqual(Guid.Empty, result.PlayerId.Value);
         Assert.Equal(1, repository.TrySaveCallCount);
+        Assert.Single(dispatcher.DispatchedEvents); // Verify domain event was dispatched
     }
 
     [Fact]
@@ -69,7 +82,7 @@ public sealed class JoinRoomHandlerTests
     {
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
         var repository = new FakeRoomJoinRepository(room, trySaveResult: false);
-        var handler = new JoinRoomHandler(repository);
+        var handler = new JoinRoomHandler(repository, new FakeDomainEventDispatcher());
 
         var act = async () => await handler.HandleAsync(new JoinRoomCommand("AB12CD", "Alice"), CancellationToken.None);
 
@@ -81,7 +94,7 @@ public sealed class JoinRoomHandlerTests
     {
         var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
         var repository = new FakeRoomJoinRepository(room, throwOnSave: new RoomJoinSaveRoomMissingException(room.Id));
-        var handler = new JoinRoomHandler(repository);
+        var handler = new JoinRoomHandler(repository, new FakeDomainEventDispatcher());
 
         var act = async () => await handler.HandleAsync(new JoinRoomCommand("AB12CD", "Alice"), CancellationToken.None);
 
