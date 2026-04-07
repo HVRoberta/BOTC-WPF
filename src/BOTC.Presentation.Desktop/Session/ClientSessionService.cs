@@ -12,6 +12,12 @@ public sealed class ClientSessionService : IClientSessionService
         !string.IsNullOrWhiteSpace(CurrentRoomCode) &&
         !string.IsNullOrWhiteSpace(CurrentPlayerId);
 
+    public void SetDisplayName(string displayName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+        DisplayName = NormalizeDisplayName(displayName);
+    }
+
     public void SetSession(string roomCode, string playerId, string displayName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(roomCode);
@@ -56,5 +62,3 @@ public sealed class ClientSessionService : IClientSessionService
             : displayName.Trim();
     }
 }
-
-

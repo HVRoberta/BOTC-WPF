@@ -563,6 +563,11 @@ public sealed class RoomLobbyViewModelTests
             !string.IsNullOrWhiteSpace(CurrentRoomCode)
             && !string.IsNullOrWhiteSpace(CurrentPlayerId);
 
+        public void SetDisplayName(string displayName)
+        {
+            DisplayName = displayName;
+        }
+
         public void SetSession(string roomCode, string playerId, string displayName)
         {
             CurrentRoomCode = roomCode;

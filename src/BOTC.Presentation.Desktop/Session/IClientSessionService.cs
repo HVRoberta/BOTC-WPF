@@ -10,6 +10,8 @@ public interface IClientSessionService
 
     bool HasActiveSession { get; }
 
+    void SetDisplayName(string displayName);
+
     void SetSession(string roomCode, string playerId, string displayName);
 
     void ClearSession();
