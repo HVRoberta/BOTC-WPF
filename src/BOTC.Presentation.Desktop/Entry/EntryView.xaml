@@ -11,7 +11,7 @@
         
         <!-- Background -->
         <Grid.Background>
-            <ImageBrush ImageSource="/BOTC.Presentation.Desktop;component/Entry/Shared/Assets/entry-background.png"
+            <ImageBrush ImageSource="/BOTC.Presentation.Desktop;component/Shared/Assets/entry-background.png"
                         Stretch="UniformToFill"/>
         </Grid.Background>
         
