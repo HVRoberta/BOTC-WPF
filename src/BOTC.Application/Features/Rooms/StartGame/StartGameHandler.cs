@@ -1,4 +1,5 @@
 using BOTC.Application.Abstractions.Events;
+using BOTC.Domain.Rooms.Players;
 using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Features.Rooms.StartGame;
@@ -62,14 +63,14 @@ public sealed class StartGameHandler
         return new StartGameResult(roomCode, starterPlayerId, true, null, room.Status);
     }
 
-    private static RoomPlayerId ParsePlayerId(string playerId)
+    private static PlayerId ParsePlayerId(string playerId)
     {
         if (!Guid.TryParse(playerId, out var parsedPlayerId))
         {
             throw new ArgumentException("StarterPlayerId must be a valid GUID.", nameof(playerId));
         }
 
-        return new RoomPlayerId(parsedPlayerId);
+        return new PlayerId(parsedPlayerId);
     }
 }
 

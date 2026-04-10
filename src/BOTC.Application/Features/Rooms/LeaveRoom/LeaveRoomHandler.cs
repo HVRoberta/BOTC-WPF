@@ -1,5 +1,7 @@
-﻿using BOTC.Application.Abstractions.Events;
+using BOTC.Application.Abstractions.Events;
+using BOTC.Domain.Rooms.Players;
 using BOTC.Domain.Rooms;
+using BOTC.Domain.Rooms.Outcomes;
 
 namespace BOTC.Application.Features.Rooms.LeaveRoom;
 
@@ -75,13 +77,13 @@ public sealed class LeaveRoomHandler
         return new LeaveRoomResult(roomCode, playerId, outcome.RoomWasRemoved, outcome.NewHostPlayerId);
     }
 
-    private static RoomPlayerId ParsePlayerId(string playerId)
+    private static PlayerId ParsePlayerId(string playerId)
     {
         if (!Guid.TryParse(playerId, out var parsedPlayerId))
         {
             throw new ArgumentException("PlayerId must be a valid GUID.", nameof(playerId));
         }
 
-        return new RoomPlayerId(parsedPlayerId);
+        return new PlayerId(parsedPlayerId);
     }
 }

@@ -2,7 +2,7 @@ namespace BOTC.Contracts.Rooms;
 
 public sealed record LobbyPlayerResponse(
     string PlayerId,
-    string DisplayName,
+    string Name,
     bool IsHost,
     bool IsReady);
 

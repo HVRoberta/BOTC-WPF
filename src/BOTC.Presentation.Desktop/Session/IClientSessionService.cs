@@ -1,4 +1,4 @@
-﻿namespace BOTC.Presentation.Desktop.Session;
+namespace BOTC.Presentation.Desktop.Session;
 
 public interface IClientSessionService
 {
@@ -6,13 +6,13 @@ public interface IClientSessionService
 
     string? CurrentPlayerId { get; }
 
-    string? DisplayName { get; }
+    string? Name { get; }
 
     bool HasActiveSession { get; }
 
-    void SetDisplayName(string displayName);
+    void SetName(string name);
 
-    void SetSession(string roomCode, string playerId, string displayName);
+    void SetSession(string roomCode, string playerId, string name);
 
     void ClearSession();
 }

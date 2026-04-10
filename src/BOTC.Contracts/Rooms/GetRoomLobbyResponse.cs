@@ -1,4 +1,4 @@
-﻿namespace BOTC.Contracts.Rooms;
+namespace BOTC.Contracts.Rooms;
 
 public sealed record GetRoomLobbyResponse(
     string RoomCode,

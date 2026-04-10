@@ -1,4 +1,5 @@
-﻿using BOTC.Domain.Events;
+using BOTC.Domain.Events;
+using BOTC.Domain.Rooms.Players;
 
 namespace BOTC.Domain.Rooms.Events;
 
@@ -9,8 +10,8 @@ namespace BOTC.Domain.Rooms.Events;
 public sealed record PlayerLeftRoomDomainEvent(
     RoomId RoomId,
     RoomCode RoomCode,
-    RoomPlayerId PlayerId,
-    RoomPlayerId? NewHostPlayerId,
+    PlayerId PlayerId,
+    PlayerId? NewHostPlayerId,
     bool IsRoomDeleted,
     DateTime OccurredAtUtc) : DomainEvent(OccurredAtUtc);
 

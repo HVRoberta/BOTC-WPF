@@ -1,4 +1,4 @@
-﻿using BOTC.Domain.Rooms;
+using BOTC.Domain.Rooms;
 using Xunit;
 
 namespace BOTC.Domain.Tests.Rooms;

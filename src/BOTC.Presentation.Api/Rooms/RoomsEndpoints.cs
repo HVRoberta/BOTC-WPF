@@ -5,6 +5,9 @@ using BOTC.Application.Features.Rooms.LeaveRoom;
 using BOTC.Application.Features.Rooms.SetPlayerReady;
 using BOTC.Application.Features.Rooms.StartGame;
 using BOTC.Contracts.Rooms;
+using BOTC.Presentation.Api.Rooms.CreateRoom;
+using BOTC.Presentation.Api.Rooms.GetRoomLobby;
+using BOTC.Presentation.Api.Rooms.JoinRoom;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BOTC.Presentation.Api.Rooms;
@@ -67,12 +70,12 @@ public static class RoomsEndpoints
         CreateRoomHandler handler,
         CancellationToken cancellationToken)
     {
-        if (request is null || string.IsNullOrWhiteSpace(request.HostDisplayName))
+        if (request is null || string.IsNullOrWhiteSpace(request.HostName))
         {
             return Results.BadRequest(new ProblemDetails
             {
                 Title = "Invalid create room request.",
-                Detail = "HostDisplayName is required.",
+                Detail = "HostName is required.",
                 Status = StatusCodes.Status400BadRequest
             });
         }
@@ -138,16 +141,16 @@ public static class RoomsEndpoints
 
     private static async Task<IResult> JoinRoomAsync(
         string roomCode,
-        JoinRoomRequest request,
+        JoinRoomRequest? request,
         JoinRoomHandler handler,
         CancellationToken cancellationToken)
     {
-        if (request is null || string.IsNullOrWhiteSpace(request.DisplayName))
+        if (request is null)
         {
             return Results.BadRequest(new ProblemDetails
             {
                 Title = "Invalid join room request.",
-                Detail = "DisplayName is required.",
+                Detail = "Name is required.",
                 Status = StatusCodes.Status400BadRequest
             });
         }

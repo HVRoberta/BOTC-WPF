@@ -1,4 +1,5 @@
-﻿using BOTC.Infrastructure.Persistence.Rooms;
+using BOTC.Infrastructure.Persistence.Rooms;
+using BOTC.Infrastructure.Persistence.User;
 using Microsoft.EntityFrameworkCore;
 
 namespace BOTC.Infrastructure.Persistence;
@@ -9,13 +10,14 @@ public sealed class BotcDbContext : DbContext
     {
     }
 
+    public DbSet<UserEntity> Users => Set<UserEntity>();
     public DbSet<RoomEntity> Rooms => Set<RoomEntity>();
-
-    public DbSet<RoomPlayerEntity> RoomPlayers => Set<RoomPlayerEntity>();
+    public DbSet<PlayerEntity> RoomPlayers => Set<PlayerEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.ApplyConfiguration(new UserEntityConfiguration());
         modelBuilder.ApplyConfiguration(new RoomEntityConfiguration());
-        modelBuilder.ApplyConfiguration(new RoomPlayerEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new PlayerEntityConfiguration());
     }
 }

@@ -1,4 +1,8 @@
-﻿namespace BOTC.Application.Features.Rooms.CreateRoom;
+using BOTC.Domain.Users;
 
-public sealed record CreateRoomCommand(string HostDisplayName);
+namespace BOTC.Application.Features.Rooms.CreateRoom;
+
+public sealed record CreateRoomCommand(
+    UserId HostUserId,
+    string RoomName);
 

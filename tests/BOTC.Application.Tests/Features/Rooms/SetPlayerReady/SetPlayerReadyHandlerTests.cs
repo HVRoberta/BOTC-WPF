@@ -1,6 +1,8 @@
 using BOTC.Application.Features.Rooms.SetPlayerReady;
 using BOTC.Application.Tests.Fakes;
+using BOTC.Domain.Rooms.Players;
 using BOTC.Domain.Rooms;
+using BOTC.Domain.Users;
 
 namespace BOTC.Application.Tests.Features.Rooms.SetPlayerReady;
 
@@ -9,9 +11,9 @@ public sealed class SetPlayerReadyHandlerTests
     [Fact]
     public async Task HandleAsync_WhenPlayerExists_UpdatesReadinessAndSaves()
     {
-        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
-        var alice = room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
-        room.ClearUncommittedEvents(); // simulate room loaded fresh from DB (no prior events)
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Test Room", UserId.New(), DateTime.UtcNow);
+        var alice = room.JoinPlayer(UserId.New(), DateTime.UtcNow.AddSeconds(1));
+        room.ClearUncommittedEvents(); // simulate room loaded fresh from DB
         var repository = new FakeRoomSetPlayerReadyRepository(room);
         var dispatcher = new FakeDomainEventDispatcher();
         var handler = new SetPlayerReadyHandler(repository, dispatcher);
@@ -30,11 +32,11 @@ public sealed class SetPlayerReadyHandlerTests
     [Fact]
     public async Task HandleAsync_WhenPlayerIsMissing_ThrowsRoomSetPlayerReadyPlayerNotFoundException()
     {
-        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Test Room", UserId.New(), DateTime.UtcNow);
         var repository = new FakeRoomSetPlayerReadyRepository(room);
         var dispatcher = new FakeDomainEventDispatcher();
         var handler = new SetPlayerReadyHandler(repository, dispatcher);
-        var missingPlayerId = RoomPlayerId.New();
+        var missingPlayerId = PlayerId.New();
 
         var act = async () => await handler.HandleAsync(
             new SetPlayerReadyCommand("AB12CD", missingPlayerId.Value.ToString(), true),
@@ -71,5 +73,3 @@ public sealed class SetPlayerReadyHandlerTests
         }
     }
 }
-
-

@@ -15,11 +15,11 @@
         </Grid.RowDefinitions>
 
         <sharedControls:PageHeader Title="Join room"
-                                   Subtitle="Enter a room code and the display name you want to use in the lobby." />
+                                   Subtitle="Enter a room code and the name you want to use in the lobby." />
 
         <sharedControls:SectionCard Grid.Row="2"
                                     Title="Join details"
-                                    Subtitle="Provide the room code and your display name.">
+                                    Subtitle="Provide the room code and your name.">
             <sharedControls:SectionCard.BodyContent>
                 <StackPanel>
                     <StackPanel>
@@ -32,9 +32,9 @@
 
                         <TextBlock Margin="0,18,0,6"
                                    Style="{StaticResource FieldLabelTextStyle}"
-                                   Text="Display name" />
+                                   Text="Name" />
                         <TextBox Style="{StaticResource InputTextBoxStyle}"
-                                 Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                                 Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
                     </StackPanel>
 
                     <sharedControls:ActionBar Margin="0,24,0,0">

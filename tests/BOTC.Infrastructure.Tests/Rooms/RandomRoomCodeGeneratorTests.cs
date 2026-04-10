@@ -1,4 +1,4 @@
-ï»¿using BOTC.Domain.Rooms;
+using BOTC.Domain.Rooms;
 using BOTC.Infrastructure.Rooms;
 
 namespace BOTC.Infrastructure.Tests.Rooms;
@@ -23,7 +23,7 @@ public sealed class RandomRoomCodeGeneratorTests
         // Act
         var code = generator.Generate();
 
-        // Assert â€“ all characters must be uppercase letters A-Z or digits 0-9.
+        // Assert – all characters must be uppercase letters A-Z or digits 0-9.
         Assert.All(code, c => Assert.True(
             (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'),
             $"Character '{c}' is not an uppercase alphanumeric character."));
@@ -32,7 +32,7 @@ public sealed class RandomRoomCodeGeneratorTests
     [Fact]
     public void Generate_WhenCalled_ReturnsValidRoomCode()
     {
-        // Act â€“ if the generated string is not a valid RoomCode, the constructor will throw.
+        // Act – if the generated string is not a valid RoomCode, the constructor will throw.
         var code = generator.Generate();
         Action act = () => { _ = new RoomCode(code); };
 
@@ -52,7 +52,7 @@ public sealed class RandomRoomCodeGeneratorTests
             .Select(_ => generator.Generate())
             .ToHashSet();
 
-        // Assert â€“ with 36^6 (~2.2 billion) possible codes, 100 collisions in a row is astronomically unlikely.
+        // Assert – with 36^6 (~2.2 billion) possible codes, 100 collisions in a row is astronomically unlikely.
         Assert.True(codes.Count > sampleSize / 2,
             $"Expected mostly distinct codes across {sampleSize} calls, but got only {codes.Count} unique codes.");
     }

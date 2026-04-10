@@ -76,7 +76,7 @@
                                 BorderBrush="{StaticResource BrushInfoForeground}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource LobbySummaryIdentityTitleTextStyle}" Text="You" />
-                                <TextBlock Style="{StaticResource LobbySummaryIdentityNameTextStyle}" Text="{Binding CurrentUserDisplayName}" />
+                                <TextBlock Style="{StaticResource LobbySummaryIdentityNameTextStyle}" Text="{Binding CurrentUsername}" />
                                 <TextBlock Style="{StaticResource LobbySummaryIdentityRoleTextStyle}" Text="{Binding CurrentUserRole}" />
                                 <TextBlock Style="{StaticResource LobbySummaryIdentityRoleTextStyle}" Text="{Binding CurrentUserReadyStateText}" />
                             </StackPanel>
@@ -87,7 +87,7 @@
                             <Border Style="{StaticResource LobbySummaryIdentityCardStyle}">
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource LobbySummaryIdentityTitleTextStyle}" Text="Host" />
-                                    <TextBlock Style="{StaticResource LobbySummaryIdentityNameTextStyle}" Text="{Binding HostDisplayName}" />
+                                    <TextBlock Style="{StaticResource LobbySummaryIdentityNameTextStyle}" Text="{Binding HostName}" />
                                     <TextBlock Style="{StaticResource LobbySummaryIdentityRoleTextStyle}" Text="Room owner" />
                                 </StackPanel>
                             </Border>
@@ -154,7 +154,7 @@
                                         <StackPanel Grid.Column="2">
                                             <TextBlock VerticalAlignment="Center"
                                                        Style="{StaticResource LobbyPlayerNameTextStyle}"
-                                                       Text="{Binding DisplayName}" />
+                                                       Text="{Binding Name}" />
                                             <TextBlock Style="{StaticResource LobbyPlayerSubtitleTextStyle}"
                                                        Text="{Binding RoleLabel}" />
                                         </StackPanel>

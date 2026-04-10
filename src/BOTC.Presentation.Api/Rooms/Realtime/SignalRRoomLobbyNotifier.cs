@@ -1,4 +1,4 @@
-﻿using BOTC.Application.Abstractions.Realtime;
+using BOTC.Application.Abstractions.Realtime;
 using BOTC.Contracts.Rooms;
 using Microsoft.AspNetCore.SignalR;
 

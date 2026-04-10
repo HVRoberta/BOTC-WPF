@@ -1,4 +1,4 @@
-﻿using BOTC.Application;
+using BOTC.Application;
 using BOTC.Application.Abstractions.Realtime;
 using BOTC.Contracts.Rooms;
 using BOTC.Infrastructure;

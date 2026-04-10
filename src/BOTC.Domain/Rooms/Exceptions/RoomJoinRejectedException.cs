@@ -1,4 +1,4 @@
-﻿namespace BOTC.Domain.Rooms;
+namespace BOTC.Domain.Rooms.Exceptions;
 
 public abstract class RoomJoinRejectedException : InvalidOperationException
 {
@@ -16,10 +16,10 @@ public sealed class RoomJoinNotAllowedException : RoomJoinRejectedException
     }
 }
 
-public sealed class RoomJoinDisplayNameAlreadyInUseException : RoomJoinRejectedException
+public sealed class RoomJoinNameAlreadyInUseException : RoomJoinRejectedException
 {
-    public RoomJoinDisplayNameAlreadyInUseException()
-        : base("Display name is already in use for this room.")
+    public RoomJoinNameAlreadyInUseException()
+        : base("Name is already in use for this room.")
     {
     }
 }

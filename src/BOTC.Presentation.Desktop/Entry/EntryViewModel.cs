@@ -1,4 +1,4 @@
-﻿using BOTC.Presentation.Desktop.Navigation;
+using BOTC.Presentation.Desktop.Navigation;
 using BOTC.Presentation.Desktop.Session;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -13,7 +13,7 @@ public partial class EntryViewModel(
     [NotifyPropertyChangedFor(nameof(HasValidationMessage))]
     [NotifyCanExecuteChangedFor(nameof(HostGameCommand))]
     [NotifyCanExecuteChangedFor(nameof(JoinGameCommand))]
-    private string _userName = string.Empty;
+    private string _username = string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasValidationMessage))]
@@ -24,23 +24,23 @@ public partial class EntryViewModel(
 
     public bool HasValidationMessage => !string.IsNullOrWhiteSpace(ValidationMessage);
 
-    partial void OnUserNameChanged(string value)
+    partial void OnUsernameChanged(string value)
     {
-        ValidateUserName(value);
+        ValidateUsername(value);
         StatusMessage = string.Empty;
     }
 
-    private bool CanStartFlow() => IsValidUserName(UserName);
+    private bool CanStartFlow() => IsValidUsername(Username);
 
     [RelayCommand(CanExecute = nameof(CanStartFlow))]
     private void HostGame()
     {
-        if (!TryPrepareUserName(out var normalizedUserName))
+        if (!TryPrepareUsername(out var normalizedUsername))
         {
             return;
         }
 
-        clientSessionService.SetDisplayName(normalizedUserName);
+        clientSessionService.SetName(normalizedUsername);
         StatusMessage = "Starting host flow...";
         navigationService.NavigateToCreateRoom();
     }
@@ -48,22 +48,22 @@ public partial class EntryViewModel(
     [RelayCommand(CanExecute = nameof(CanStartFlow))]
     private void JoinGame()
     {
-        if (!TryPrepareUserName(out var normalizedUserName))
+        if (!TryPrepareUsername(out var normalizedUsername))
         {
             return;
         }
 
-        clientSessionService.SetDisplayName(normalizedUserName);
+        clientSessionService.SetName(normalizedUsername);
         StatusMessage = "Starting join flow...";
         navigationService.NavigateToJoinRoom();
     }
 
-    private bool TryPrepareUserName(out string normalizedUserName)
+    private bool TryPrepareUsername(out string normalizedUsername)
     {
-        normalizedUserName = UserName.Trim();
-        if (!IsValidUserName(normalizedUserName))
+        normalizedUsername = Username.Trim();
+        if (!IsValidUsername(normalizedUsername))
         {
-            ValidateUserName(normalizedUserName);
+            ValidateUsername(normalizedUsername);
             return false;
         }
 
@@ -71,17 +71,17 @@ public partial class EntryViewModel(
         return true;
     }
 
-    private void ValidateUserName(string userName)
+    private void ValidateUsername(string username)
     {
-        var normalizedUserName = userName.Trim();
+        var normalizedUsername = username.Trim();
 
-        if (normalizedUserName.Length == 0)
+        if (normalizedUsername.Length == 0)
         {
             ValidationMessage = "User name is required.";
             return;
         }
 
-        if (normalizedUserName.Length < 2)
+        if (normalizedUsername.Length < 2)
         {
             ValidationMessage = "User name must be at least 2 characters.";
             return;
@@ -90,8 +90,8 @@ public partial class EntryViewModel(
         ValidationMessage = string.Empty;
     }
 
-    private static bool IsValidUserName(string userName)
+    private static bool IsValidUsername(string username)
     {
-        return !string.IsNullOrWhiteSpace(userName) && userName.Trim().Length >= 2;
+        return !string.IsNullOrWhiteSpace(username) && username.Trim().Length >= 2;
     }
 }

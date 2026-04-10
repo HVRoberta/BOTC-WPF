@@ -1,9 +1,10 @@
+using BOTC.Domain.Rooms.Players;
 using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Features.Rooms.SetPlayerReady;
 
 public sealed record SetPlayerReadyResult(
     RoomCode RoomCode,
-    RoomPlayerId PlayerId,
+    PlayerId PlayerId,
     bool IsReady);
 

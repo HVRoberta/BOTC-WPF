@@ -1,4 +1,4 @@
-﻿using BOTC.Presentation.Desktop.Entry;
+using BOTC.Presentation.Desktop.Entry;
 using BOTC.Presentation.Desktop.Navigation;
 using BOTC.Presentation.Desktop.Session;
 
@@ -73,6 +73,10 @@ public sealed class EntryViewModelTests
         public int NavigateToCreateRoomCallCount { get; private set; }
 
         public int NavigateToJoinRoomCallCount { get; private set; }
+
+        public void NavigateToEntry()
+        {
+        }
 
         public void NavigateToCreateRoom()
         {

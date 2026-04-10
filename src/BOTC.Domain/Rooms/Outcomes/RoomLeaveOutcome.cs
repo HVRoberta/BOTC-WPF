@@ -1,9 +1,10 @@
-﻿namespace BOTC.Domain.Rooms;
+using BOTC.Domain.Rooms.Players;
+
+namespace BOTC.Domain.Rooms.Outcomes;
 
 public sealed record RoomLeaveOutcome(
     bool RoomWasRemoved,
-    RoomPlayerId? NewHostPlayerId)
+    PlayerId? NewHostPlayerId)
 {
-    public bool HostWasTransferred => NewHostPlayerId.HasValue;
+    public bool HostWasTransferred => NewHostPlayerId is not null;
 }
-

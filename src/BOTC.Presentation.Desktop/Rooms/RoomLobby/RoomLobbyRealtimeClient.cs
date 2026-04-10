@@ -1,4 +1,4 @@
-﻿using BOTC.Contracts.Rooms;
+using BOTC.Contracts.Rooms;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace BOTC.Presentation.Desktop.Rooms.RoomLobby;

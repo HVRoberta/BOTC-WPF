@@ -11,5 +11,6 @@
     <Project Path="tests/BOTC.Application.Tests/BOTC.Application.Tests.csproj" />
     <Project Path="tests/BOTC.Architecture.Tests/BOTC.Architecture.Tests.csproj" />
     <Project Path="tests/BOTC.Domain.Tests/BOTC.Domain.Tests.csproj" />
+    <Project Path="tests/BOTC.Infrastructure.Tests/BOTC.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>

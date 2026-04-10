@@ -1,4 +1,4 @@
-﻿namespace BOTC.Domain.Events;
+namespace BOTC.Domain.Events;
 
 /// <summary>
 /// Base record type for all domain events raised by aggregates.

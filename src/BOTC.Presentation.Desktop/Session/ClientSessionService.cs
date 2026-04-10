@@ -1,4 +1,4 @@
-﻿namespace BOTC.Presentation.Desktop.Session;
+namespace BOTC.Presentation.Desktop.Session;
 
 public sealed class ClientSessionService : IClientSessionService
 {
@@ -6,39 +6,39 @@ public sealed class ClientSessionService : IClientSessionService
 
     public string? CurrentPlayerId { get; private set; }
 
-    public string? DisplayName { get; private set; }
+    public string? Name { get; private set; }
 
     public bool HasActiveSession =>
         !string.IsNullOrWhiteSpace(CurrentRoomCode) &&
         !string.IsNullOrWhiteSpace(CurrentPlayerId);
 
-    public void SetDisplayName(string displayName)
+    public void SetName(string name)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
-        DisplayName = NormalizeDisplayName(displayName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        Name = NormalizeName(name);
     }
 
-    public void SetSession(string roomCode, string playerId, string displayName)
+    public void SetSession(string roomCode, string playerId, string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(roomCode);
         ArgumentException.ThrowIfNullOrWhiteSpace(playerId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
         var normalizedRoomCode = NormalizeRoomCode(roomCode);
         var normalizedPlayerId = NormalizePlayerId(playerId);
-        var normalizedDisplayName = NormalizeDisplayName(displayName);
+        var normalizedName = NormalizeName(name);
 
 
         CurrentRoomCode = normalizedRoomCode;
         CurrentPlayerId = normalizedPlayerId;
-        DisplayName = normalizedDisplayName;
+        Name = normalizedName;
     }
 
     public void ClearSession()
     {
         CurrentRoomCode = null;
         CurrentPlayerId = null;
-        DisplayName = null;
+        Name = null;
     }
 
     private static string NormalizeRoomCode(string roomCode)
@@ -55,10 +55,10 @@ public sealed class ClientSessionService : IClientSessionService
             : playerId.Trim();
     }
 
-    private static string NormalizeDisplayName(string displayName)
+    private static string NormalizeName(string name)
     {
-        return string.IsNullOrWhiteSpace(displayName)
+        return string.IsNullOrWhiteSpace(name)
             ? string.Empty
-            : displayName.Trim();
+            : name.Trim();
     }
 }

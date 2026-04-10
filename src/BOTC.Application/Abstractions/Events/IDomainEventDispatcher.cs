@@ -1,4 +1,4 @@
-﻿using BOTC.Domain.Events;
+using BOTC.Domain.Events;
 
 namespace BOTC.Application.Abstractions.Events;
 

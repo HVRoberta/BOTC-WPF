@@ -1,4 +1,5 @@
-﻿using BOTC.Domain.Events;
+using BOTC.Domain.Events;
+using BOTC.Domain.Rooms.Players;
 
 namespace BOTC.Domain.Rooms.Events;
 
@@ -8,8 +9,7 @@ namespace BOTC.Domain.Rooms.Events;
 public sealed record RoomCreatedDomainEvent(
     RoomId RoomId,
     RoomCode RoomCode,
-    RoomPlayerId HostPlayerId,
-    string HostDisplayName,
+    PlayerId HostPlayerId,
     DateTime OccurredAtUtc) : DomainEvent(OccurredAtUtc);
 
 

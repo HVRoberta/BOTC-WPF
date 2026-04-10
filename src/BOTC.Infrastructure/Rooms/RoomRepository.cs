@@ -1,9 +1,11 @@
-﻿using BOTC.Application.Abstractions.Persistence;
+using BOTC.Application.Abstractions.Persistence;
 using BOTC.Application.Features.Rooms.JoinRoom;
 using BOTC.Application.Features.Rooms.LeaveRoom;
 using BOTC.Application.Features.Rooms.SetPlayerReady;
 using BOTC.Application.Features.Rooms.StartGame;
+using BOTC.Domain.Rooms.Players;
 using BOTC.Domain.Rooms;
+using BOTC.Domain.Users;
 using BOTC.Infrastructure.Persistence;
 using BOTC.Infrastructure.Persistence.Rooms;
 using Microsoft.EntityFrameworkCore;
@@ -233,14 +235,9 @@ public sealed class RoomRepository :
                 continue;
             }
 
-            if (!string.Equals(persistedPlayer.DisplayName, desiredPlayer.DisplayName, StringComparison.Ordinal))
+            if (persistedPlayer.UserId != desiredPlayer.UserId.Value)
             {
-                persistedPlayer.DisplayName = desiredPlayer.DisplayName;
-            }
-
-            if (!string.Equals(persistedPlayer.NormalizedDisplayName, desiredPlayer.NormalizedDisplayName, StringComparison.Ordinal))
-            {
-                persistedPlayer.NormalizedDisplayName = desiredPlayer.NormalizedDisplayName;
+                persistedPlayer.UserId = desiredPlayer.UserId.Value;
             }
 
             if (persistedPlayer.Role != (int)desiredPlayer.Role)
@@ -266,6 +263,7 @@ public sealed class RoomRepository :
         {
             Id = room.Id.Value,
             Code = room.Code.Value,
+            Name = room.Name,
             Status = (int)room.Status,
             CreatedAtUtc = room.CreatedAtUtc,
             Players = room.Players
@@ -274,14 +272,13 @@ public sealed class RoomRepository :
         };
     }
 
-    private static RoomPlayerEntity MapToEntity(RoomPlayer player, RoomId roomId)
+    private static PlayerEntity MapToEntity(Player player, RoomId roomId)
     {
-        return new RoomPlayerEntity
+        return new PlayerEntity
         {
             Id = player.Id.Value,
             RoomId = roomId.Value,
-            DisplayName = player.DisplayName,
-            NormalizedDisplayName = player.NormalizedDisplayName,
+            UserId = player.UserId.Value,
             Role = (int)player.Role,
             JoinedAtUtc = player.JoinedAtUtc,
             IsReady = player.IsReady
@@ -303,24 +300,24 @@ public sealed class RoomRepository :
         return Room.Rehydrate(
             new RoomId(entity.Id),
             new RoomCode(entity.Code),
+            entity.Name,
             players,
             (RoomStatus)entity.Status,
             NormalizePersistedUtc(entity.CreatedAtUtc));
     }
 
-    private static RoomPlayer MapToDomain(RoomPlayerEntity entity)
+    private static Player MapToDomain(PlayerEntity entity)
     {
-        if (!Enum.IsDefined(typeof(RoomPlayerRole), entity.Role))
+        if (!Enum.IsDefined(typeof(PlayerRole), entity.Role))
         {
             throw new InvalidOperationException(
                 $"Room player '{entity.Id}' contains invalid persisted role value '{entity.Role}'.");
         }
 
-        return RoomPlayer.Rehydrate(
-            new RoomPlayerId(entity.Id),
-            entity.DisplayName,
-            entity.NormalizedDisplayName,
-            (RoomPlayerRole)entity.Role,
+        return Player.Rehydrate(
+            new PlayerId(entity.Id),
+            new UserId(entity.UserId),
+            (PlayerRole)entity.Role,
             NormalizePersistedUtc(entity.JoinedAtUtc),
             entity.IsReady);
     }

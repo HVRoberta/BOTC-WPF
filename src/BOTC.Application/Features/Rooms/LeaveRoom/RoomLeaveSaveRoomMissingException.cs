@@ -1,4 +1,4 @@
-﻿using BOTC.Domain.Rooms;
+using BOTC.Domain.Rooms;
 namespace BOTC.Application.Features.Rooms.LeaveRoom;
 public sealed class RoomLeaveSaveRoomMissingException : Exception
 {

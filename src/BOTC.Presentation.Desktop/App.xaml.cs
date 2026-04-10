@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using BOTC.Presentation.Desktop.Navigation;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +24,7 @@ public partial class App
 
         var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
         var navigationService = _serviceProvider.GetRequiredService<INavigationService>();
-        navigationService.NavigateToCreateRoom();
+        navigationService.NavigateToEntry();
 
         mainWindow.Show();
     }

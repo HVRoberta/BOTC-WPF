@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Net;
 using System.Net.Http;
 using BOTC.Contracts.Rooms;
@@ -36,7 +36,6 @@ public partial class RoomLobbyViewModel(
     public string RoomStatus => _snapshotState.RoomStatus;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ErrorMessage))]
     [NotifyPropertyChangedFor(nameof(HasScreenMessage))]
     [NotifyPropertyChangedFor(nameof(HasAnyStatusUpdate))]
     [NotifyPropertyChangedFor(nameof(ShowLastSuccessfulLobbyHint))]
@@ -98,7 +97,6 @@ public partial class RoomLobbyViewModel(
     [NotifyPropertyChangedFor(nameof(HasAnyStatusUpdate))]
     private bool _isStartingGame;
 
-    public string ErrorMessage => ScreenMessage;
 
     public bool HasScreenMessage => !string.IsNullOrWhiteSpace(ScreenMessage);
 
@@ -110,11 +108,11 @@ public partial class RoomLobbyViewModel(
 
     public bool ShowLastSuccessfulLobbyHint => HasLobbyData && HasScreenMessage;
 
-    public string CurrentUserDisplayName => _snapshotState.CurrentUserDisplayName;
+    public string CurrentUsername => _snapshotState.CurrentUsername;
 
     public string CurrentUserRole => _snapshotState.CurrentUserRole;
 
-    public string HostDisplayName => _snapshotState.HostDisplayName;
+    public string HostName => _snapshotState.HostName;
 
     public bool IsCurrentUserHost => _snapshotState.IsCurrentUserHost;
 
@@ -704,7 +702,7 @@ public partial class RoomLobbyViewModel(
     {
         _currentRoomCode = NormalizeRoomCode(clientSessionService.CurrentRoomCode ?? string.Empty);
         _currentPlayerId = NormalizePlayerId(clientSessionService.CurrentPlayerId ?? string.Empty);
-        _snapshotState.ApplySessionDisplayName(clientSessionService.DisplayName ?? string.Empty);
+        _snapshotState.ApplySessionName(clientSessionService.Name ?? string.Empty);
 
         NotifyLobbyMetadataChanged();
 
@@ -909,12 +907,12 @@ public partial class RoomLobbyViewModel(
 
     private void NotifyLobbyMetadataChanged()
     {
-        OnPropertyChanged(nameof(CurrentUserDisplayName));
+        OnPropertyChanged(nameof(CurrentUsername));
         OnPropertyChanged(nameof(CurrentUserRole));
         OnPropertyChanged(nameof(IsCurrentUserHost));
         OnPropertyChanged(nameof(IsCurrentUserReady));
         OnPropertyChanged(nameof(CurrentUserReadyStateText));
-        OnPropertyChanged(nameof(HostDisplayName));
+        OnPropertyChanged(nameof(HostName));
         OnPropertyChanged(nameof(NonHostReadinessSummary));
         OnPropertyChanged(nameof(CanStartGame));
         OnPropertyChanged(nameof(StartEligibilityHint));

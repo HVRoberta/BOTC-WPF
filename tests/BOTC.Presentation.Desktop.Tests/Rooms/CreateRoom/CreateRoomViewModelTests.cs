@@ -1,4 +1,4 @@
-﻿using BOTC.Contracts.Rooms;
+using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Desktop.Navigation;
 using BOTC.Presentation.Desktop.Rooms;
 using BOTC.Presentation.Desktop.Rooms.CreateRoom;
@@ -72,6 +72,10 @@ public sealed class CreateRoomViewModelTests
     private sealed class FakeNavigationService : INavigationService
     {
         public int NavigateToJoinRoomCallCount { get; private set; }
+
+        public void NavigateToEntry()
+        {
+        }
 
         public void NavigateToCreateRoom()
         {

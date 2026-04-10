@@ -1,5 +1,9 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
+using BOTC.Domain.Rooms.Players;
 using BOTC.Domain.Rooms.Events;
+using BOTC.Domain.Rooms.Exceptions;
+using BOTC.Domain.Rooms.Outcomes;
+using BOTC.Domain.Users;
 
 namespace BOTC.Domain.Rooms;
 
@@ -7,19 +11,24 @@ public sealed class Room : AggregateRoot
 {
     public const int MinPlayersToStartGame = 2;
     private const int MaxPlayers = 20;
+    private const int MaxNameLength = 30;
 
-    private readonly List<RoomPlayer> players;
-    private readonly ReadOnlyCollection<RoomPlayer> readOnlyPlayers;
+    private readonly List<Player> players;
+    private readonly ReadOnlyCollection<Player> readOnlyPlayers;
 
     private Room(
         RoomId id,
         RoomCode code,
-        IEnumerable<RoomPlayer> players,
+        string name,
+        IEnumerable<Player> players,
         RoomStatus status,
         DateTime createdAtUtc)
     {
+        ArgumentNullException.ThrowIfNull(players);
+
         Id = id;
         Code = code;
+        Name = ValidateName(name);
         this.players = players.ToList();
         readOnlyPlayers = this.players.AsReadOnly();
         Status = ValidateStatus(status);
@@ -29,40 +38,41 @@ public sealed class Room : AggregateRoot
     }
 
     public RoomId Id { get; }
-
     public RoomCode Code { get; }
-
-    public IReadOnlyCollection<RoomPlayer> Players => readOnlyPlayers;
-
-    public RoomPlayerId HostPlayerId => GetHost().Id;
-
-    public string HostDisplayName => GetHost().DisplayName;
-
+    public string Name { get; private set; }
+    public IReadOnlyCollection<Player> Players => readOnlyPlayers;
+    public PlayerId HostPlayerId => GetHost().Id;
     public RoomStatus Status { get; private set; }
-
     public DateTime CreatedAtUtc { get; }
 
-    public static Room Create(RoomId id, RoomCode code, string hostDisplayName, DateTime createdAtUtc)
+    public static Room Create(
+        RoomId id,
+        RoomCode code,
+        string  name,
+        UserId hostUserId,
+        DateTime createdAtUtc)
     {
-        var hostPlayer = RoomPlayer.Create(
-            RoomPlayerId.New(),
-            hostDisplayName,
-            RoomPlayerRole.Host,
-            createdAtUtc);
+        var utcCreatedAt = EnsureUtc(createdAtUtc, nameof(createdAtUtc));
+
+        var hostPlayer = Player.Create(
+            PlayerId.New(),
+            hostUserId,
+            PlayerRole.Host,
+            utcCreatedAt);
 
         var room = new Room(
             id,
             code,
+            name,
             [hostPlayer],
             RoomStatus.WaitingForPlayers,
-            createdAtUtc);
+            utcCreatedAt);
 
         room.RaiseDomainEvent(new RoomCreatedDomainEvent(
-            id,
-            code,
+            room.Id,
+            room.Code,
             hostPlayer.Id,
-            hostPlayer.DisplayName,
-            room.CreatedAtUtc)); // use the UTC-normalized value stored on the aggregate
+            room.CreatedAtUtc));
 
         return room;
     }
@@ -70,61 +80,74 @@ public sealed class Room : AggregateRoot
     public static Room Rehydrate(
         RoomId id,
         RoomCode code,
-        IEnumerable<RoomPlayer> players,
+        string name,
+        IEnumerable<Player> players,
         RoomStatus status,
         DateTime createdAtUtc)
     {
-        ArgumentNullException.ThrowIfNull(players);
-
-        return new Room(id, code, players, status, createdAtUtc);
+        return new Room(id, code, name, players, status, createdAtUtc);
     }
 
-    public RoomPlayer JoinPlayer(string displayName, DateTime joinedAtUtc)
+    public Player JoinPlayer(
+        UserId userId,
+        DateTime joinedAtUtc)
     {
         EnsureJoinAllowed();
+        EnsureCapacityAvailable();
+        EnsureUserNotAlreadyInRoom(userId);
 
-        var candidateNormalizedName = RoomPlayer.NormalizeDisplayName(displayName);
-        if (players.Any(p => string.Equals(p.NormalizedDisplayName, candidateNormalizedName, StringComparison.Ordinal)))
-        {
-            throw new RoomJoinDisplayNameAlreadyInUseException();
-        }
+        var utcJoinedAt = EnsureUtc(joinedAtUtc, nameof(joinedAtUtc));
 
-        if (players.Count >= MaxPlayers)
-        {
-            throw new RoomJoinCapacityReachedException(MaxPlayers);
-        }
+        var player = Player.Create(
+            PlayerId.New(),
+            userId,
+            PlayerRole.Player,
+            utcJoinedAt);
 
-        var player = RoomPlayer.Create(RoomPlayerId.New(), displayName, RoomPlayerRole.Player, joinedAtUtc);
         players.Add(player);
 
         RaiseDomainEvent(new PlayerJoinedRoomDomainEvent(
             Id,
             Code,
             player.Id,
-            player.DisplayName,
-            joinedAtUtc));
+            utcJoinedAt));
 
         return player;
     }
-
-    public RoomLeaveOutcome LeavePlayer(RoomPlayerId playerId)
+    
+    public void Rename(string name)
     {
-        var leavingPlayer = players.SingleOrDefault(player => player.Id == playerId);
-        if (leavingPlayer is null)
-        {
-            throw new RoomLeavePlayerNotFoundException(playerId);
-        }
+        Name = ValidateName(name);
+    }
+    
+    private static string ValidateName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Room name is required.", nameof(name));
+
+        var trimmed = name.Trim();
+
+        if (trimmed.Length > MaxNameLength)
+            throw new ArgumentException($"Room name must not exceed {MaxNameLength} characters.", nameof(name));
+
+        return trimmed;
+    }
+
+    public RoomLeaveOutcome LeavePlayer(PlayerId playerId)
+    {
+        var leavingPlayer = FindPlayer(playerId)
+            ?? throw new RoomLeavePlayerNotFoundException(playerId);
 
         if (players.Count == 1)
         {
-            players.RemoveAt(0);
-            
+            players.Clear();
+
             RaiseDomainEvent(new PlayerLeftRoomDomainEvent(
                 Id,
                 Code,
                 playerId,
-                null,
-                IsRoomDeleted: true,
+                null, 
+                true,
                 DateTime.UtcNow));
 
             return new RoomLeaveOutcome(true, null);
@@ -132,28 +155,23 @@ public sealed class Room : AggregateRoot
 
         players.RemoveAll(player => player.Id == playerId);
 
-        if (leavingPlayer.Role != RoomPlayerRole.Host)
+        if (leavingPlayer.Role != PlayerRole.Host)
         {
             EnsurePlayerInvariants(players);
-            
+
             RaiseDomainEvent(new PlayerLeftRoomDomainEvent(
                 Id,
                 Code,
                 playerId,
                 null,
-                IsRoomDeleted: false,
+                false,
                 DateTime.UtcNow));
 
             return new RoomLeaveOutcome(false, null);
         }
 
-        var successor = players
-            .OrderBy(player => player.JoinedAtUtc)
-            .ThenBy(player => player.Id.Value)
-            .First();
-
-        var successorIndex = players.FindIndex(player => player.Id == successor.Id);
-        players[successorIndex] = successor.WithRole(RoomPlayerRole.Host);
+        var successor = SelectNextHost();
+        ReplacePlayer(successor.ChangeRole(PlayerRole.Host));
 
         EnsurePlayerInvariants(players);
 
@@ -162,38 +180,20 @@ public sealed class Room : AggregateRoot
             Code,
             playerId,
             successor.Id,
-            IsRoomDeleted: false,
+            false,
             DateTime.UtcNow));
 
         return new RoomLeaveOutcome(false, successor.Id);
     }
 
-    public void RenameHost(string hostDisplayName)
-    {
-        var host = GetHost();
-        var candidateNormalizedName = RoomPlayer.NormalizeDisplayName(hostDisplayName);
-
-        if (players.Any(p => p.Id != host.Id && string.Equals(p.NormalizedDisplayName, candidateNormalizedName, StringComparison.Ordinal)))
-        {
-            throw new InvalidOperationException("Display name is already in use for this room.");
-        }
-
-        var renamedHost = host.WithDisplayName(hostDisplayName);
-        var hostIndex = players.FindIndex(p => p.Id == host.Id);
-        players[hostIndex] = renamedHost;
-    }
-
-    public void SetPlayerReady(RoomPlayerId playerId, bool isReady)
+    public void SetPlayerReady(PlayerId playerId, bool isReady)
     {
         EnsureReadinessChangeAllowed();
 
-        var playerIndex = players.FindIndex(player => player.Id == playerId);
-        if (playerIndex < 0)
-        {
-            throw new RoomSetPlayerReadyPlayerNotFoundException(playerId);
-        }
+        var player = FindPlayer(playerId)
+            ?? throw new RoomSetPlayerReadyPlayerNotFoundException(playerId);
 
-        players[playerIndex] = players[playerIndex].WithReadyState(isReady);
+        ReplacePlayer(player.SetReady(isReady));
 
         RaiseDomainEvent(new PlayerReadyStateChangedDomainEvent(
             Id,
@@ -203,15 +203,15 @@ public sealed class Room : AggregateRoot
             DateTime.UtcNow));
     }
 
-    public RoomStartGameOutcome StartGame(RoomPlayerId starterPlayerId)
+    public RoomStartGameOutcome StartGame(PlayerId starterPlayerId)
     {
-        var starter = players.SingleOrDefault(player => player.Id == starterPlayerId);
+        var starter = FindPlayer(starterPlayerId);
         if (starter is null)
         {
             return RoomStartGameOutcome.Blocked(RoomStartGameBlockedReason.StarterPlayerNotFound);
         }
 
-        if (starter.Role != RoomPlayerRole.Host)
+        if (starter.Role != PlayerRole.Host)
         {
             return RoomStartGameOutcome.Blocked(RoomStartGameBlockedReason.StartedByNonHost);
         }
@@ -227,8 +227,8 @@ public sealed class Room : AggregateRoot
         }
 
         var hasUnreadyNonHostPlayer = players.Any(player =>
-            player.Role == RoomPlayerRole.Player
-            && !player.IsReady);
+            player.Role == PlayerRole.Player &&
+            !player.IsReady);
 
         if (hasUnreadyNonHostPlayer)
         {
@@ -261,42 +261,78 @@ public sealed class Room : AggregateRoot
         }
     }
 
-    private RoomPlayer GetHost()
+    private void EnsureCapacityAvailable()
     {
-        var host = players.SingleOrDefault(player => player.Role == RoomPlayerRole.Host);
-        if (host is null)
+        if (players.Count >= MaxPlayers)
         {
-            throw new InvalidOperationException("Room must have exactly one host player.");
+            throw new RoomJoinCapacityReachedException(MaxPlayers);
         }
-
-        return host;
     }
 
-    private static void EnsurePlayerInvariants(IReadOnlyCollection<RoomPlayer> players)
+    private void EnsureUserNotAlreadyInRoom(UserId userId)
+    {
+        var alreadyJoined = players.Any(player => player.UserId == userId);
+
+        if (alreadyJoined)
+        {
+            throw new RoomUserAlreadyJoinedException(userId);
+        }
+    }
+
+    private Player GetHost()
+    {
+        return players.Single(player => player.Role == PlayerRole.Host);
+    }
+
+    private Player? FindPlayer(PlayerId playerId)
+    {
+        return players.SingleOrDefault(player => player.Id == playerId);
+    }
+
+    private Player SelectNextHost()
+    {
+        return players
+            .OrderBy(player => player.JoinedAtUtc)
+            .ThenBy(player => player.Id.Value)
+            .First();
+    }
+
+    private void ReplacePlayer(Player updatedPlayer)
+    {
+        var index = players.FindIndex(player => player.Id == updatedPlayer.Id);
+        if (index < 0)
+        {
+            throw new InvalidOperationException("Player to replace was not found in the room.");
+        }
+
+        players[index] = updatedPlayer;
+    }
+
+    private static void EnsurePlayerInvariants(IReadOnlyCollection<Player> players)
     {
         if (players.Count == 0)
         {
             throw new ArgumentException("Room must contain at least one player.", nameof(players));
         }
 
-        var hostCount = players.Count(player => player.Role == RoomPlayerRole.Host);
+        if (players.Count > MaxPlayers)
+        {
+            throw new ArgumentException($"Room cannot exceed {MaxPlayers} players.", nameof(players));
+        }
+
+        var hostCount = players.Count(player => player.Role == PlayerRole.Host);
         if (hostCount != 1)
         {
             throw new ArgumentException("Room must have exactly one host player.", nameof(players));
         }
 
-        var duplicatedDisplayName = players
-            .GroupBy(player => player.NormalizedDisplayName, StringComparer.Ordinal)
+        var duplicateUsers = players
+            .GroupBy(player => player.UserId)
             .Any(group => group.Count() > 1);
 
-        if (duplicatedDisplayName)
+        if (duplicateUsers)
         {
-            throw new ArgumentException("Player display names must be unique within a room.", nameof(players));
-        }
-
-        if (players.Count > MaxPlayers)
-        {
-            throw new ArgumentException($"Room cannot exceed {MaxPlayers} participants.", nameof(players));
+            throw new ArgumentException("A user cannot join the same room more than once.", nameof(players));
         }
     }
 
@@ -312,16 +348,11 @@ public sealed class Room : AggregateRoot
 
     private static DateTime EnsureUtc(DateTime value, string paramName)
     {
-        if (value.Kind == DateTimeKind.Utc)
+        return value.Kind switch
         {
-            return value;
-        }
-
-        if (value.Kind == DateTimeKind.Local)
-        {
-            return value.ToUniversalTime();
-        }
-
-        throw new ArgumentException("Created date must specify UTC or Local kind.", paramName);
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => throw new ArgumentException("Date must specify UTC or Local kind.", paramName)
+        };
     }
 }

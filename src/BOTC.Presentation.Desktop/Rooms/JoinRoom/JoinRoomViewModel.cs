@@ -1,6 +1,7 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http;
 using BOTC.Contracts.Rooms;
+using BOTC.Domain.Users;
 using BOTC.Presentation.Desktop.Navigation;
 using BOTC.Presentation.Desktop.Rooms.Shared;
 using BOTC.Presentation.Desktop.Session;
@@ -20,10 +21,9 @@ public partial class JoinRoomViewModel(
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(JoinRoomCommand))]
-    private string _displayName = string.Empty;
+    private string _name = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ErrorMessage))]
     [NotifyPropertyChangedFor(nameof(HasScreenMessage))]
     private string _screenMessage = string.Empty;
 
@@ -35,7 +35,6 @@ public partial class JoinRoomViewModel(
     [NotifyCanExecuteChangedFor(nameof(BackToCreateRoomCommand))]
     private bool _isBusy;
 
-    public string ErrorMessage => ScreenMessage;
 
     public bool HasScreenMessage => !string.IsNullOrWhiteSpace(ScreenMessage);
 
@@ -44,7 +43,7 @@ public partial class JoinRoomViewModel(
     private bool CanJoinRoom() =>
         !IsBusy
         && !string.IsNullOrWhiteSpace(RoomCode)
-        && !string.IsNullOrWhiteSpace(DisplayName);
+        && !string.IsNullOrWhiteSpace(Name);
 
     private bool CanBackToCreateRoom() => !IsBusy;
 
@@ -59,23 +58,23 @@ public partial class JoinRoomViewModel(
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(DisplayName))
+        if (string.IsNullOrWhiteSpace(Name))
         {
-            ShowErrorMessage("Display name is required.");
+            ShowErrorMessage("Name is required.");
             return;
         }
 
         IsBusy = true;
         try
         {
-            var request = new JoinRoomRequest(DisplayName.Trim());
+            var request = new JoinRoomRequest(UserId.New(), Name.Trim());
             var response = await roomsApiClient.JoinRoomAsync(RoomCode.Trim(), request, CancellationToken.None);
-            clientSessionService.SetSession(response.RoomCode, response.PlayerId, response.DisplayName);
+            clientSessionService.SetSession(response.RoomCode, response.PlayerId, response.Name);
             navigationService.NavigateToRoomLobby();
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.BadRequest)
         {
-            ShowErrorMessage("Enter a valid room code and display name.");
+            ShowErrorMessage("Enter a valid room code and name.");
         }
         catch (HttpRequestException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
         {

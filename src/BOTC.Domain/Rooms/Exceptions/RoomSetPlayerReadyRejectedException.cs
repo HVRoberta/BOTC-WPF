@@ -1,4 +1,6 @@
-namespace BOTC.Domain.Rooms;
+using BOTC.Domain.Rooms.Players;
+
+namespace BOTC.Domain.Rooms.Exceptions;
 
 public abstract class RoomSetPlayerReadyRejectedException : InvalidOperationException
 {
@@ -18,12 +20,11 @@ public sealed class RoomSetPlayerReadyNotAllowedException : RoomSetPlayerReadyRe
 
 public sealed class RoomSetPlayerReadyPlayerNotFoundException : RoomSetPlayerReadyRejectedException
 {
-    public RoomSetPlayerReadyPlayerNotFoundException(RoomPlayerId playerId)
+    public RoomSetPlayerReadyPlayerNotFoundException(PlayerId playerId)
         : base($"Player with id '{playerId.Value}' was not found in this room.")
     {
         PlayerId = playerId;
     }
 
-    public RoomPlayerId PlayerId { get; }
+    public PlayerId PlayerId { get; }
 }
-

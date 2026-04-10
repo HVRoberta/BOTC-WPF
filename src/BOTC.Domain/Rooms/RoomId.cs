@@ -1,4 +1,4 @@
-﻿namespace BOTC.Domain.Rooms;
+namespace BOTC.Domain.Rooms;
 
 public readonly record struct RoomId
 {

@@ -1,8 +1,9 @@
-﻿using BOTC.Application.Features.Rooms.GetRoomLobby;
+using BOTC.Application.Features.Rooms.GetRoomLobby;
 using BOTC.Contracts.Rooms;
+using BOTC.Domain.Rooms.Players;
 using BOTC.Domain.Rooms;
 
-namespace BOTC.Presentation.Api.Rooms;
+namespace BOTC.Presentation.Api.Rooms.GetRoomLobby;
 
 internal static class RoomLobbyMappings
 {
@@ -23,17 +24,17 @@ internal static class RoomLobbyMappings
     {
         return new LobbyPlayerResponse(
             player.PlayerId.Value.ToString(),
-            player.DisplayName,
+            player.Name,
             ToIsHost(player.Role),
             player.IsReady);
     }
 
-    private static bool ToIsHost(RoomPlayerRole role)
+    private static bool ToIsHost(PlayerRole role)
     {
         return role switch
         {
-            RoomPlayerRole.Host => true,
-            RoomPlayerRole.Player => false,
+            PlayerRole.Host => true,
+            PlayerRole.Player => false,
             _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Unsupported room player role.")
         };
     }

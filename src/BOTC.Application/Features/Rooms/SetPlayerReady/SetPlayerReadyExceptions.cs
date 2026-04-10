@@ -1,3 +1,4 @@
+using BOTC.Domain.Rooms.Players;
 using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Features.Rooms.SetPlayerReady;
@@ -15,7 +16,7 @@ public sealed class RoomSetPlayerReadyRoomNotFoundException : Exception
 
 public sealed class RoomSetPlayerReadyPlayerNotFoundException : Exception
 {
-    public RoomSetPlayerReadyPlayerNotFoundException(RoomCode roomCode, RoomPlayerId playerId)
+    public RoomSetPlayerReadyPlayerNotFoundException(RoomCode roomCode, PlayerId playerId)
         : base($"Player with id '{playerId.Value}' was not found in room '{roomCode.Value}'.")
     {
         RoomCode = roomCode;
@@ -24,7 +25,7 @@ public sealed class RoomSetPlayerReadyPlayerNotFoundException : Exception
 
     public RoomCode RoomCode { get; }
 
-    public RoomPlayerId PlayerId { get; }
+    public PlayerId PlayerId { get; }
 }
 
 public sealed class RoomSetPlayerReadyConflictException : Exception
