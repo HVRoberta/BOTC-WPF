@@ -1,4 +1,4 @@
-﻿namespace BOTC.Presentation.Desktop.Configuration;
+namespace BOTC.Presentation.Desktop.Configuration;
 
 /// <summary>
 /// SignalR endpoint options for the desktop application.

@@ -8,9 +8,9 @@ internal sealed class RoomLobbySnapshotState
     private const string UnknownValue = "-";
     private const int MinPlayersToStartGame = 2;
 
-    private string _currentUserDisplayName = string.Empty;
+    private string _currentUsername = string.Empty;
     private string _currentUserRole = UnknownValue;
-    private string _hostDisplayName = string.Empty;
+    private string _hostName = string.Empty;
     private DateTimeOffset? _lastSuccessfulRefreshAt;
     private int _readyNonHostPlayerCount;
     private int _nonHostPlayerCount;
@@ -43,7 +43,7 @@ internal sealed class RoomLobbySnapshotState
         ? "No players to ready yet"
         : $"{_readyNonHostPlayerCount}/{_nonHostPlayerCount} players ready";
 
-    public string CurrentUserDisplayName => string.IsNullOrWhiteSpace(_currentUserDisplayName) ? UnknownValue : _currentUserDisplayName;
+    public string CurrentUsername => string.IsNullOrWhiteSpace(_currentUsername) ? UnknownValue : _currentUsername;
 
     public string CurrentUserRole => _currentUserRole;
 
@@ -65,7 +65,7 @@ internal sealed class RoomLobbySnapshotState
         }
     }
 
-    public string HostDisplayName => string.IsNullOrWhiteSpace(_hostDisplayName) ? UnknownValue : _hostDisplayName;
+    public string HostName => string.IsNullOrWhiteSpace(_hostName) ? UnknownValue : _hostName;
 
     public string PlayerCountSummary => Players.Count == 1 ? "1 player in lobby" : $"{Players.Count} players in lobby";
 
@@ -79,9 +79,9 @@ internal sealed class RoomLobbySnapshotState
         RoomCode = string.IsNullOrWhiteSpace(normalizedRoomCode) ? UnknownValue : normalizedRoomCode;
     }
 
-    public void ApplySessionDisplayName(string displayName)
+    public void ApplySessionName(string name)
     {
-        _currentUserDisplayName = NormalizeDisplayName(displayName);
+        _currentUsername = NormalizeName(name);
     }
 
     public void ApplyLobbySnapshot(GetRoomLobbyResponse response, string currentPlayerId)
@@ -89,7 +89,7 @@ internal sealed class RoomLobbySnapshotState
         var normalizedRoomCode = NormalizeRoomCode(response.RoomCode);
         RoomCode = string.IsNullOrWhiteSpace(normalizedRoomCode) ? UnknownValue : normalizedRoomCode;
         LobbyStatus = response.Status;
-        RoomStatus = ToDisplayStatus(response.Status);
+        RoomStatus = ToStatus(response.Status);
 
         ApplyLobbyParticipantMetadata(response, currentPlayerId);
         ReplacePlayers(response.Players, currentPlayerId);
@@ -105,9 +105,9 @@ internal sealed class RoomLobbySnapshotState
         RoomStatus = UnknownValue;
         HasLobbyData = false;
         LobbyStatus = null;
-        _currentUserDisplayName = string.Empty;
+        _currentUsername = string.Empty;
         _currentUserRole = UnknownValue;
-        _hostDisplayName = string.Empty;
+        _hostName = string.Empty;
         _lastSuccessfulRefreshAt = null;
         _readyNonHostPlayerCount = 0;
         _nonHostPlayerCount = 0;
@@ -121,13 +121,13 @@ internal sealed class RoomLobbySnapshotState
         var currentPlayer = response.Players.FirstOrDefault(player => string.Equals(player.PlayerId, currentPlayerId, StringComparison.Ordinal));
         _nonHostPlayerCount = response.Players.Count(player => !player.IsHost);
         _readyNonHostPlayerCount = response.Players.Count(player => !player.IsHost && player.IsReady);
-        _hostDisplayName = NormalizeDisplayName(hostPlayer?.DisplayName ?? string.Empty);
+        _hostName = NormalizeName(hostPlayer?.Name ?? string.Empty);
         IsCurrentUserHost = false;
         IsCurrentUserReady = false;
 
         if (currentPlayer is not null)
         {
-            _currentUserDisplayName = NormalizeDisplayName(currentPlayer.DisplayName);
+            _currentUsername = NormalizeName(currentPlayer.Name);
             IsCurrentUserHost = currentPlayer.IsHost;
             IsCurrentUserReady = currentPlayer.IsReady;
             _currentUserRole = currentPlayer.IsHost ? "Host" : "Player";
@@ -145,7 +145,7 @@ internal sealed class RoomLobbySnapshotState
             var player = players[index];
             Players.Add(new LobbyPlayerItemViewModel(
                 player.PlayerId,
-                player.DisplayName,
+                player.Name,
                 player.IsHost,
                 player.IsReady,
                 string.Equals(player.PlayerId, currentPlayerId, StringComparison.Ordinal),
@@ -160,14 +160,14 @@ internal sealed class RoomLobbySnapshotState
             : roomCode.Trim().ToUpperInvariant();
     }
 
-    private static string NormalizeDisplayName(string displayName)
+    private static string NormalizeName(string name)
     {
-        return string.IsNullOrWhiteSpace(displayName)
+        return string.IsNullOrWhiteSpace(name)
             ? string.Empty
-            : displayName.Trim();
+            : name.Trim();
     }
 
-    private static string ToDisplayStatus(RoomStatusContract status)
+    private static string ToStatus(RoomStatusContract status)
     {
         return status switch
         {

@@ -1,4 +1,5 @@
-﻿using BOTC.Presentation.Desktop.Rooms.CreateRoom;
+using BOTC.Presentation.Desktop.Entry;
+using BOTC.Presentation.Desktop.Rooms.CreateRoom;
 using BOTC.Presentation.Desktop.Rooms.JoinRoom;
 using BOTC.Presentation.Desktop.Rooms.RoomLobby;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,6 +10,11 @@ public sealed class NavigationService(
     MainWindowViewModel mainWindowViewModel,
     IServiceProvider serviceProvider) : INavigationService
 {
+    public void NavigateToEntry()
+    {
+        mainWindowViewModel.CurrentViewModel = serviceProvider.GetRequiredService<EntryViewModel>();
+    }
+    
     public void NavigateToCreateRoom()
     {
         mainWindowViewModel.CurrentViewModel = serviceProvider.GetRequiredService<CreateRoomViewModel>();

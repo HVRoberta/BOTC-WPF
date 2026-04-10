@@ -1,5 +1,6 @@
-﻿using System.Net.Http;
+using System.Net.Http;
 using BOTC.Contracts.Rooms;
+using BOTC.Domain.Users;
 using BOTC.Presentation.Desktop.Navigation;
 using BOTC.Presentation.Desktop.Rooms.Shared;
 using BOTC.Presentation.Desktop.Session;
@@ -15,10 +16,9 @@ public partial class CreateRoomViewModel(
 {
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CreateRoomCommand))]
-    private string _hostDisplayName = string.Empty;
+    private string _hostName = string.Empty;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ErrorMessage))]
     [NotifyPropertyChangedFor(nameof(HasScreenMessage))]
     private string _screenMessage = string.Empty;
 
@@ -30,13 +30,12 @@ public partial class CreateRoomViewModel(
     [NotifyCanExecuteChangedFor(nameof(NavigateToJoinRoomCommand))]
     private bool _isBusy;
 
-    public string ErrorMessage => ScreenMessage;
 
     public bool HasScreenMessage => !string.IsNullOrWhiteSpace(ScreenMessage);
 
     public string BusyText => "Creating room...";
 
-    private bool CanCreateRoom() => !IsBusy && !string.IsNullOrWhiteSpace(HostDisplayName);
+    private bool CanCreateRoom() => !IsBusy && !string.IsNullOrWhiteSpace(HostName);
 
     private bool CanNavigateToJoinRoom() => !IsBusy;
 
@@ -45,18 +44,18 @@ public partial class CreateRoomViewModel(
     {
         ClearScreenMessage();
 
-        if (string.IsNullOrWhiteSpace(HostDisplayName))
+        if (string.IsNullOrWhiteSpace(HostName))
         {
-            ShowErrorMessage("Host display name is required.");
+            ShowErrorMessage("Host name is required.");
             return;
         }
 
         IsBusy = true;
         try
         {
-            var request = new CreateRoomRequest(HostDisplayName.Trim());
+            var request = new CreateRoomRequest(UserId.New(), HostName.Trim());
             var response = await roomsApiClient.CreateRoomAsync(request, CancellationToken.None);
-            clientSessionService.SetSession(response.RoomCode, response.PlayerId, request.HostDisplayName);
+            clientSessionService.SetSession(response.RoomCode, response.PlayerId, request.HostName);
             navigationService.NavigateToRoomLobby();
         }
         catch (HttpRequestException)

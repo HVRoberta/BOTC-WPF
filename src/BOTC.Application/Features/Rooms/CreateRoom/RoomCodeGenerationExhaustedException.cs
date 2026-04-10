@@ -1,4 +1,4 @@
-﻿namespace BOTC.Application.Features.Rooms.CreateRoom;
+namespace BOTC.Application.Features.Rooms.CreateRoom;
 
 public sealed class RoomCodeGenerationExhaustedException : InvalidOperationException
 {

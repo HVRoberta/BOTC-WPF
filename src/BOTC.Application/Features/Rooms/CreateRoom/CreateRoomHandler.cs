@@ -1,4 +1,4 @@
-﻿using BOTC.Application.Abstractions.Events;
+using BOTC.Application.Abstractions.Events;
 using BOTC.Application.Abstractions.Persistence;
 using BOTC.Application.Abstractions.Services;
 using BOTC.Domain.Rooms;
@@ -36,7 +36,8 @@ public sealed class CreateRoomHandler
             var room = Room.Create(
                 RoomId.New(),
                 candidateCode,
-                command.HostDisplayName,
+                command.RoomName,
+                command.HostUserId,
                 DateTime.UtcNow);
 
             var added = await _roomRepository.TryAddAsync(room, cancellationToken);
@@ -58,9 +59,9 @@ public sealed class CreateRoomHandler
             return new CreateRoomResult(
                 room.Id,
                 room.Code,
-                room.HostPlayerId,
-                room.HostDisplayName,
+                room.Name,
                 room.Status,
+                room.HostPlayerId,
                 room.CreatedAtUtc);
         }
 

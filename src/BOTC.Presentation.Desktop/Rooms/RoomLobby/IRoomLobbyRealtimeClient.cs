@@ -1,4 +1,4 @@
-﻿namespace BOTC.Presentation.Desktop.Rooms.RoomLobby;
+namespace BOTC.Presentation.Desktop.Rooms.RoomLobby;
 
 public interface IRoomLobbyRealtimeClient : IAsyncDisposable
 {

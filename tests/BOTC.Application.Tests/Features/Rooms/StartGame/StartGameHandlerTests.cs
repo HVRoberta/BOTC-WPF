@@ -1,6 +1,7 @@
 using BOTC.Application.Features.Rooms.StartGame;
 using BOTC.Application.Tests.Fakes;
 using BOTC.Domain.Rooms;
+using BOTC.Domain.Users;
 
 namespace BOTC.Application.Tests.Features.Rooms.StartGame;
 
@@ -9,8 +10,8 @@ public sealed class StartGameHandlerTests
     [Fact]
     public async Task HandleAsync_WhenAllNonHostPlayersAreReady_StartsGameAndSaves()
     {
-        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
-        var alice = room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Test Room", UserId.New(), DateTime.UtcNow);
+        var alice = room.JoinPlayer(UserId.New(), DateTime.UtcNow.AddSeconds(1));
         room.SetPlayerReady(alice.Id, true);
         room.ClearUncommittedEvents(); // simulate room loaded fresh from DB (no prior events)
         var repository = new FakeRoomStartGameRepository(room);
@@ -31,8 +32,8 @@ public sealed class StartGameHandlerTests
     [Fact]
     public async Task HandleAsync_WhenGameIsBlockedByReadiness_ReturnsReasonWithoutSaving()
     {
-        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
-        room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Test Room", UserId.New(), DateTime.UtcNow);
+        room.JoinPlayer(UserId.New(), DateTime.UtcNow.AddSeconds(1));
         var repository = new FakeRoomStartGameRepository(room);
         var dispatcher = new FakeDomainEventDispatcher();
         var handler = new StartGameHandler(repository, dispatcher);
@@ -71,4 +72,3 @@ public sealed class StartGameHandlerTests
         }
     }
 }
-

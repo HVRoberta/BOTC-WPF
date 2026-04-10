@@ -1,6 +1,8 @@
-﻿using BOTC.Application.Features.Rooms.LeaveRoom;
+using BOTC.Application.Features.Rooms.LeaveRoom;
 using BOTC.Application.Tests.Fakes;
+using BOTC.Domain.Rooms.Players;
 using BOTC.Domain.Rooms;
+using BOTC.Domain.Users;
 
 namespace BOTC.Application.Tests.Features.Rooms.LeaveRoom;
 
@@ -27,10 +29,10 @@ public sealed class LeaveRoomHandlerTests
     [Fact]
     public async Task HandleAsync_WhenHostLeavesAndPlayersRemain_SavesRoomAndReturnsTransferredHost()
     {
-        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
-        var alice = room.JoinPlayer("Alice", DateTime.UtcNow.AddSeconds(1));
-        room.JoinPlayer("Bob", DateTime.UtcNow.AddSeconds(2));
-        room.ClearUncommittedEvents(); // simulate room loaded fresh from DB (no prior events)
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Test Room", UserId.New(), DateTime.UtcNow);
+        var alice = room.JoinPlayer(UserId.New(), DateTime.UtcNow.AddSeconds(1));
+        room.JoinPlayer(UserId.New(), DateTime.UtcNow.AddSeconds(2));
+        room.ClearUncommittedEvents(); // simulate room loaded fresh from DB
         var repository = new FakeRoomLeaveRepository(room);
         var dispatcher = new FakeDomainEventDispatcher();
         var handler = new LeaveRoomHandler(repository, dispatcher);
@@ -49,8 +51,8 @@ public sealed class LeaveRoomHandlerTests
     [Fact]
     public async Task HandleAsync_WhenLastPlayerLeaves_DeletesRoomAndReturnsRemovedOutcome()
     {
-        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
-        room.ClearUncommittedEvents(); // simulate room loaded fresh from DB (no prior events)
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Test Room", UserId.New(), DateTime.UtcNow);
+        room.ClearUncommittedEvents(); // simulate room loaded fresh from DB
         var repository = new FakeRoomLeaveRepository(room);
         var dispatcher = new FakeDomainEventDispatcher();
         var handler = new LeaveRoomHandler(repository, dispatcher);
@@ -69,11 +71,11 @@ public sealed class LeaveRoomHandlerTests
     [Fact]
     public async Task HandleAsync_WhenPlayerIsMissing_ThrowsRoomLeavePlayerNotFoundException()
     {
-        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Host", DateTime.UtcNow);
+        var room = Room.Create(RoomId.New(), new RoomCode("AB12CD"), "Test Room", UserId.New(), DateTime.UtcNow);
         var repository = new FakeRoomLeaveRepository(room);
         var dispatcher = new FakeDomainEventDispatcher();
         var handler = new LeaveRoomHandler(repository, dispatcher);
-        var missingPlayerId = RoomPlayerId.New();
+        var missingPlayerId = PlayerId.New();
 
         var act = async () => await handler.HandleAsync(
             new LeaveRoomCommand("AB12CD", missingPlayerId.Value.ToString()),

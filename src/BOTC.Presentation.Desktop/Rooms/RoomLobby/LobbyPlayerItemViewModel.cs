@@ -1,8 +1,8 @@
-﻿namespace BOTC.Presentation.Desktop.Rooms.RoomLobby;
+namespace BOTC.Presentation.Desktop.Rooms.RoomLobby;
 
 public sealed record LobbyPlayerItemViewModel(
     string PlayerId,
-    string DisplayName,
+    string Name,
     bool IsHost,
     bool IsReady,
     bool IsCurrentUser,

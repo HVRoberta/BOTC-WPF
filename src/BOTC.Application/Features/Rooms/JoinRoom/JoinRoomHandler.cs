@@ -1,5 +1,7 @@
 using BOTC.Application.Abstractions.Events;
+using BOTC.Domain.Rooms.Players;
 using BOTC.Domain.Rooms;
+using BOTC.Domain.Rooms.Exceptions;
 
 namespace BOTC.Application.Features.Rooms.JoinRoom;
 
@@ -27,10 +29,10 @@ public sealed class JoinRoomHandler
             throw new RoomJoinNotFoundException(roomCode);
         }
 
-        RoomPlayer joinedPlayer;
+        Player joinedPlayer;
         try
         {
-            joinedPlayer = room.JoinPlayer(command.DisplayName, DateTime.UtcNow);
+            joinedPlayer = room.JoinPlayer(command.UserId, DateTime.UtcNow);
         }
         catch (RoomJoinRejectedException exception)
         {
@@ -62,6 +64,6 @@ public sealed class JoinRoomHandler
             room.ClearUncommittedEvents();
         }
 
-        return new JoinRoomResult(roomCode, joinedPlayer.Id, joinedPlayer.DisplayName);
+        return new JoinRoomResult(roomCode, joinedPlayer.Id, command.Name);
     }
 }

@@ -1,4 +1,4 @@
-﻿using BOTC.Application.Features.Rooms.CreateRoom;
+using BOTC.Application.Features.Rooms.CreateRoom;
 using BOTC.Application.Features.Rooms.GetRoomLobby;
 using BOTC.Application.Features.Rooms.JoinRoom;
 using BOTC.Application.Features.Rooms.LeaveRoom;
@@ -57,7 +57,7 @@ public sealed class JoinRoomEndpointTests
         // Arrange
         const string displayName = "TestPlayer";
         const string roomCode = "AB12CD";
-        var playerId = RoomPlayerId.New();
+        var playerId = RoomMemberId.New();
         
         var request = new JoinRoomRequest { DisplayName = displayName };
         var result = new JoinRoomResult(
@@ -173,7 +173,7 @@ public sealed class JoinRoomEndpointTests
         // Arrange
         const string displayName = "TestPlayer";
         const string roomCode = "AB12CD";
-        var playerId = RoomPlayerId.New();
+        var playerId = RoomMemberId.New();
         
         var request = new JoinRoomRequest { DisplayName = displayName };
         var handlerResult = new JoinRoomResult(

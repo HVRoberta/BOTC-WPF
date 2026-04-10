@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Desktop.Navigation;
 using BOTC.Presentation.Desktop.Rooms;
@@ -537,6 +537,10 @@ public sealed class RoomLobbyViewModelTests
     {
         public int NavigateToCreateRoomCallCount { get; private set; }
 
+        public void NavigateToEntry()
+        {
+        }
+
         public void NavigateToCreateRoom()
         {
             NavigateToCreateRoomCallCount++;
@@ -562,6 +566,11 @@ public sealed class RoomLobbyViewModelTests
         public bool HasActiveSession =>
             !string.IsNullOrWhiteSpace(CurrentRoomCode)
             && !string.IsNullOrWhiteSpace(CurrentPlayerId);
+
+        public void SetDisplayName(string displayName)
+        {
+            DisplayName = displayName;
+        }
 
         public void SetSession(string roomCode, string playerId, string displayName)
         {

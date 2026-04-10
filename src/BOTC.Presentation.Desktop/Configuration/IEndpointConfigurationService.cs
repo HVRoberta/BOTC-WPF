@@ -1,4 +1,4 @@
-﻿namespace BOTC.Presentation.Desktop.Configuration;
+namespace BOTC.Presentation.Desktop.Configuration;
 
 public interface IEndpointConfigurationService
 {

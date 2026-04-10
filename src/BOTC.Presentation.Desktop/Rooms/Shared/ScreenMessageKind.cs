@@ -1,4 +1,4 @@
-﻿namespace BOTC.Presentation.Desktop.Rooms.Shared;
+namespace BOTC.Presentation.Desktop.Rooms.Shared;
 
 public enum ScreenMessageKind
 {

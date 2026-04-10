@@ -1,13 +1,17 @@
-﻿using BOTC.Application.Abstractions.Persistence;
+using BOTC.Application.Abstractions.Persistence;
 using BOTC.Application.Abstractions.Services;
 using BOTC.Application.Features.Rooms.CreateRoom;
 using BOTC.Application.Tests.Fakes;
 using BOTC.Domain.Rooms;
+using BOTC.Domain.Users;
 
 namespace BOTC.Application.Tests.Features.Rooms.CreateRoom;
 
 public sealed class CreateRoomHandlerTests
 {
+    private static readonly UserId TestHostUserId = UserId.New();
+    private const string TestRoomName = "Test Room";
+
     [Fact]
     public void Constructor_WhenRepositoryIsNull_ThrowsArgumentNullException()
     {
@@ -78,7 +82,7 @@ public sealed class CreateRoomHandlerTests
         var generator = new FakeRoomCodeGenerator(["AB12CD"]);
         var dispatcher = new FakeDomainEventDispatcher();
         var handler = new CreateRoomHandler(repository, generator, dispatcher);
-        var command = new CreateRoomCommand("Host");
+        var command = new CreateRoomCommand(TestHostUserId, TestRoomName);
         var before = DateTime.UtcNow;
 
         // Act
@@ -88,7 +92,7 @@ public sealed class CreateRoomHandlerTests
         var after = DateTime.UtcNow;
         Assert.NotEqual(Guid.Empty, result.RoomId.Value);
         Assert.Equal("AB12CD", result.RoomCode.Value);
-        Assert.Equal("Host", result.HostDisplayName);
+        Assert.Equal(TestRoomName, result.RoomName);
         Assert.Equal(RoomStatus.WaitingForPlayers, result.Status);
         Assert.Equal(DateTimeKind.Utc, result.CreatedAtUtc.Kind);
         Assert.True(result.CreatedAtUtc >= before && result.CreatedAtUtc <= after);
@@ -106,7 +110,7 @@ public sealed class CreateRoomHandlerTests
         var generator = new FakeRoomCodeGenerator(["AB12CD", "EF34GH"]);
         var dispatcher = new FakeDomainEventDispatcher();
         var handler = new CreateRoomHandler(repository, generator, dispatcher);
-        var command = new CreateRoomCommand("Host");
+        var command = new CreateRoomCommand(TestHostUserId, TestRoomName);
 
         // Act
         var result = await handler.HandleAsync(command, CancellationToken.None);
@@ -127,7 +131,7 @@ public sealed class CreateRoomHandlerTests
         var generator = new FakeRoomCodeGenerator(Enumerable.Repeat("AB12CD", 10));
         var dispatcher = new FakeDomainEventDispatcher();
         var handler = new CreateRoomHandler(repository, generator, dispatcher);
-        var command = new CreateRoomCommand("Host");
+        var command = new CreateRoomCommand(TestHostUserId, TestRoomName);
 
         // Act
         var act = async () => await handler.HandleAsync(command, CancellationToken.None);
@@ -147,7 +151,7 @@ public sealed class CreateRoomHandlerTests
         var generator = new FakeRoomCodeGenerator(["abc"]);
         var dispatcher = new FakeDomainEventDispatcher();
         var handler = new CreateRoomHandler(repository, generator, dispatcher);
-        var command = new CreateRoomCommand("Host");
+        var command = new CreateRoomCommand(TestHostUserId, TestRoomName);
 
         // Act
         var act = async () => await handler.HandleAsync(command, CancellationToken.None);
@@ -167,7 +171,7 @@ public sealed class CreateRoomHandlerTests
         var generator = new FakeRoomCodeGenerator(["AB12CD"]);
         var dispatcher = new FakeDomainEventDispatcher();
         var handler = new CreateRoomHandler(repository, generator, dispatcher);
-        var command = new CreateRoomCommand("Host");
+        var command = new CreateRoomCommand(TestHostUserId, TestRoomName);
 
         // Act
         var act = async () => await handler.HandleAsync(command, CancellationToken.None);
@@ -187,7 +191,7 @@ public sealed class CreateRoomHandlerTests
         var generator = new FakeRoomCodeGenerator(["AB12CD"]);
         var dispatcher = new FakeDomainEventDispatcher();
         var handler = new CreateRoomHandler(repository, generator, dispatcher);
-        var command = new CreateRoomCommand("Host");
+        var command = new CreateRoomCommand(TestHostUserId, TestRoomName);
 
         using var cancellationTokenSource = new CancellationTokenSource();
         cancellationTokenSource.Cancel();

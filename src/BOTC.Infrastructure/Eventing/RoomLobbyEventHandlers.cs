@@ -1,4 +1,4 @@
-﻿using BOTC.Application.Abstractions.Events;
+using BOTC.Application.Abstractions.Events;
 using BOTC.Application.Abstractions.Realtime;
 using BOTC.Domain.Rooms.Events;
 

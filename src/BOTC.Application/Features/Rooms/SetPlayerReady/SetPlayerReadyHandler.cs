@@ -1,5 +1,7 @@
 using BOTC.Application.Abstractions.Events;
+using BOTC.Domain.Rooms.Players;
 using BOTC.Domain.Rooms;
+using BOTC.Domain.Rooms.Exceptions;
 
 namespace BOTC.Application.Features.Rooms.SetPlayerReady;
 
@@ -34,7 +36,7 @@ public sealed class SetPlayerReadyHandler
         {
             room.SetPlayerReady(playerId, command.IsReady);
         }
-        catch (BOTC.Domain.Rooms.RoomSetPlayerReadyPlayerNotFoundException)
+        catch (Domain.Rooms.Exceptions.RoomSetPlayerReadyPlayerNotFoundException)
         {
             throw new RoomSetPlayerReadyPlayerNotFoundException(roomCode, playerId);
         }
@@ -69,14 +71,14 @@ public sealed class SetPlayerReadyHandler
         return new SetPlayerReadyResult(roomCode, playerId, command.IsReady);
     }
 
-    private static RoomPlayerId ParsePlayerId(string playerId)
+    private static PlayerId ParsePlayerId(string playerId)
     {
         if (!Guid.TryParse(playerId, out var parsedPlayerId))
         {
             throw new ArgumentException("PlayerId must be a valid GUID.", nameof(playerId));
         }
 
-        return new RoomPlayerId(parsedPlayerId);
+        return new PlayerId(parsedPlayerId);
     }
 }
 

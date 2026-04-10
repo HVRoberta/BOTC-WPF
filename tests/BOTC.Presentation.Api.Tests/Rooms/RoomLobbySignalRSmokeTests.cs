@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Api.Rooms.Realtime;
 

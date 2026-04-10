@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -29,8 +29,8 @@ namespace BOTC.Infrastructure.Persistence.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     RoomId = table.Column<Guid>(type: "uuid", nullable: false),
-                    DisplayName = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    NormalizedDisplayName = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    NormalizedName = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     Role = table.Column<int>(type: "integer", nullable: false),
                     JoinedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     IsReady = table.Column<bool>(type: "boolean", nullable: false)
@@ -47,9 +47,9 @@ namespace BOTC.Infrastructure.Persistence.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_RoomPlayers_RoomId_NormalizedDisplayName",
+                name: "IX_RoomPlayers_RoomId_NormalizedName",
                 table: "RoomPlayers",
-                columns: new[] { "RoomId", "NormalizedDisplayName" },
+                columns: new[] { "RoomId", "NormalizedName" },
                 unique: true);
 
             migrationBuilder.CreateIndex(

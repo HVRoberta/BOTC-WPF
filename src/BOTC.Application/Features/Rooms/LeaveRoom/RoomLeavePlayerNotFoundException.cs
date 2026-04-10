@@ -1,10 +1,11 @@
-﻿using BOTC.Domain.Rooms;
+using BOTC.Domain.Rooms.Players;
+using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Features.Rooms.LeaveRoom;
 
 public sealed class RoomLeavePlayerNotFoundException : Exception
 {
-    public RoomLeavePlayerNotFoundException(RoomCode roomCode, RoomPlayerId playerId)
+    public RoomLeavePlayerNotFoundException(RoomCode roomCode, PlayerId playerId)
         : base($"Player with id '{playerId.Value}' was not found in room '{roomCode.Value}'.")
     {
         RoomCode = roomCode;
@@ -13,6 +14,6 @@ public sealed class RoomLeavePlayerNotFoundException : Exception
 
     public RoomCode RoomCode { get; }
 
-    public RoomPlayerId PlayerId { get; }
+    public PlayerId PlayerId { get; }
 }
 

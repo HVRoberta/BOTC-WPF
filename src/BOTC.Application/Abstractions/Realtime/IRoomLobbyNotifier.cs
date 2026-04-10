@@ -1,4 +1,4 @@
-﻿namespace BOTC.Application.Abstractions.Realtime;
+namespace BOTC.Application.Abstractions.Realtime;
 
 /// <summary>
 /// Abstraction for notifying clients about room lobby state changes.

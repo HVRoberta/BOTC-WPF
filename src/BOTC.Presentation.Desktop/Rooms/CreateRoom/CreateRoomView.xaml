@@ -5,7 +5,7 @@
              xmlns:sharedControls="clr-namespace:BOTC.Presentation.Desktop.Rooms.Shared.Controls"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
-             d:DesignHeight="360"
+             d:DesignHeight="400"
              d:DesignWidth="520">
     <Grid>
         <Grid.RowDefinitions>
@@ -15,19 +15,23 @@
         </Grid.RowDefinitions>
 
         <sharedControls:PageHeader Title="Create room"
-                                   Subtitle="Start a new room and enter the lobby as the host." />
+                                   Subtitle="Enter your name to create a new room and become its host." />
 
         <sharedControls:SectionCard Grid.Row="2"
                                     Title="Host details"
-                                    Subtitle="Choose the display name you want to use in the lobby.">
+                                    Subtitle="Your name will be shown to all players in the lobby.">
             <sharedControls:SectionCard.BodyContent>
                 <StackPanel>
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource FieldLabelTextStyle}"
-                                   Text="Host display name" />
-                        <TextBox Style="{StaticResource InputTextBoxStyle}"
-                                 Text="{Binding HostDisplayName, UpdateSourceTrigger=PropertyChanged}" />
-                    </StackPanel>
+                    <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                               Text="Host name" />
+                    <TextBox Style="{StaticResource InputTextBoxStyle}"
+                             MaxLength="40"
+                             Text="{Binding HostName, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter"
+                                        Command="{Binding CreateRoomCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
 
                     <sharedControls:ActionBar Margin="0,24,0,0">
                         <sharedControls:ActionBar.LeadingContent>
@@ -38,7 +42,7 @@
                                         Content="Create room" />
                                 <Button Style="{StaticResource SecondaryButtonStyle}"
                                         Command="{Binding NavigateToJoinRoomCommand}"
-                                        Content="Join existing room" />
+                                        Content="Join a room instead" />
                             </StackPanel>
                         </sharedControls:ActionBar.LeadingContent>
                     </sharedControls:ActionBar>

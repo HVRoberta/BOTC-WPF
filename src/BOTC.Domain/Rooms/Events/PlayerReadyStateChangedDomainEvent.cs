@@ -1,4 +1,5 @@
-﻿using BOTC.Domain.Events;
+using BOTC.Domain.Events;
+using BOTC.Domain.Rooms.Players;
 
 namespace BOTC.Domain.Rooms.Events;
 
@@ -8,7 +9,7 @@ namespace BOTC.Domain.Rooms.Events;
 public sealed record PlayerReadyStateChangedDomainEvent(
     RoomId RoomId,
     RoomCode RoomCode,
-    RoomPlayerId PlayerId,
+    PlayerId PlayerId,
     bool IsReady,
     DateTime OccurredAtUtc) : DomainEvent(OccurredAtUtc);
 

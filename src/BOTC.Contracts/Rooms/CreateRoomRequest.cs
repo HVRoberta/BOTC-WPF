@@ -1,4 +1,6 @@
-﻿namespace BOTC.Contracts.Rooms;
+using BOTC.Domain.Users;
 
-public sealed record CreateRoomRequest(string HostDisplayName);
+namespace BOTC.Contracts.Rooms;
+
+public sealed record CreateRoomRequest(UserId HostUserId, string HostName);
 

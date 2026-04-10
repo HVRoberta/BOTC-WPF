@@ -1,4 +1,6 @@
-﻿namespace BOTC.Domain.Rooms;
+using BOTC.Domain.Rooms.Players;
+
+namespace BOTC.Domain.Rooms;
 
 public abstract class RoomLeaveRejectedException : InvalidOperationException
 {
@@ -10,12 +12,11 @@ public abstract class RoomLeaveRejectedException : InvalidOperationException
 
 public sealed class RoomLeavePlayerNotFoundException : RoomLeaveRejectedException
 {
-    public RoomLeavePlayerNotFoundException(RoomPlayerId playerId)
+    public RoomLeavePlayerNotFoundException(PlayerId playerId)
         : base($"Player with id '{playerId.Value}' was not found in this room.")
     {
         PlayerId = playerId;
     }
 
-    public RoomPlayerId PlayerId { get; }
+    public PlayerId PlayerId { get; }
 }
-

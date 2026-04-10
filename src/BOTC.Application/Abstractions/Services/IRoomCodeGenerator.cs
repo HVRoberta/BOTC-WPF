@@ -1,4 +1,4 @@
-﻿namespace BOTC.Application.Abstractions.Services;
+namespace BOTC.Application.Abstractions.Services;
 
 public interface IRoomCodeGenerator
 {

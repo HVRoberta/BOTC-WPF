@@ -1,6 +1,8 @@
-﻿﻿using BOTC.Domain.Rooms;
+using BOTC.Domain.Rooms;
+using BOTC.Domain.Rooms.Players;
 using BOTC.Infrastructure.Persistence;
 using BOTC.Infrastructure.Persistence.Rooms;
+using BOTC.Infrastructure.Persistence.User;
 using BOTC.Infrastructure.Rooms;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -33,30 +35,36 @@ public sealed class RoomLobbyReadRepositoryTests : IDisposable
     {
         // Arrange
         var roomId = Guid.NewGuid();
+        var hostUserId = Guid.NewGuid();
+        var aliceUserId = Guid.NewGuid();
+
+        dbContext.Users.AddRange(
+            new UserEntity { Id = hostUserId, Username = "host", NickName = "Host", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow },
+            new UserEntity { Id = aliceUserId, Username = "alice", NickName = "Alice", CreatedAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow });
+
         dbContext.Rooms.Add(new RoomEntity
         {
             Id = roomId,
             Code = "AB12CD",
+            Name = "Test Room",
             Status = (int)RoomStatus.WaitingForPlayers,
             CreatedAtUtc = DateTime.UtcNow,
             Players =
             [
-                new RoomPlayerEntity
+                new PlayerEntity
                 {
                     Id = Guid.NewGuid(),
                     RoomId = roomId,
-                    DisplayName = "Host",
-                    NormalizedDisplayName = "HOST",
-                    Role = (int)RoomPlayerRole.Host,
+                    UserId = hostUserId,
+                    Role = (int)PlayerRole.Host,
                     JoinedAtUtc = DateTime.UtcNow
                 },
-                new RoomPlayerEntity
+                new PlayerEntity
                 {
                     Id = Guid.NewGuid(),
                     RoomId = roomId,
-                    DisplayName = "Alice",
-                    NormalizedDisplayName = "ALICE",
-                    Role = (int)RoomPlayerRole.Player,
+                    UserId = aliceUserId,
+                    Role = (int)PlayerRole.Player,
                     JoinedAtUtc = DateTime.UtcNow.AddSeconds(1)
                 }
             ]
@@ -72,10 +80,10 @@ public sealed class RoomLobbyReadRepositoryTests : IDisposable
         Assert.Equal("AB12CD", result!.RoomCode.Value);
         Assert.Equal(RoomStatus.WaitingForPlayers, result.Status);
         Assert.Equal(2, result.Players.Count);
-        Assert.Equal("Host", result.Players[0].DisplayName);
-        Assert.Equal(RoomPlayerRole.Host, result.Players[0].Role);
-        Assert.Equal("Alice", result.Players[1].DisplayName);
-        Assert.Equal(RoomPlayerRole.Player, result.Players[1].Role);
+        Assert.Equal("Host", result.Players[0].Name);
+        Assert.Equal(PlayerRole.Host, result.Players[0].Role);
+        Assert.Equal("Alice", result.Players[1].Name);
+        Assert.Equal(PlayerRole.Player, result.Players[1].Role);
         Assert.Empty(dbContext.ChangeTracker.Entries());
     }
 
@@ -94,21 +102,32 @@ public sealed class RoomLobbyReadRepositoryTests : IDisposable
     {
         // Arrange
         var roomId = Guid.NewGuid();
+        var hostUserId = Guid.NewGuid();
+
+        dbContext.Users.Add(new UserEntity
+        {
+            Id = hostUserId,
+            Username = "host",
+            NickName = "Host",
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        });
+
         dbContext.Rooms.Add(new RoomEntity
         {
             Id = roomId,
             Code = "AB12CD",
+            Name = "Test Room",
             Status = 999,
             CreatedAtUtc = DateTime.UtcNow,
             Players =
             [
-                new RoomPlayerEntity
+                new PlayerEntity
                 {
                     Id = Guid.NewGuid(),
                     RoomId = roomId,
-                    DisplayName = "Host",
-                    NormalizedDisplayName = "HOST",
-                    Role = (int)RoomPlayerRole.Host,
+                    UserId = hostUserId,
+                    Role = (int)PlayerRole.Host,
                     JoinedAtUtc = DateTime.UtcNow
                 }
             ]

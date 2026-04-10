@@ -1,4 +1,4 @@
-﻿using Xunit;
+using Xunit;
 
 namespace BOTC.Architecture.Tests;
 
@@ -66,11 +66,11 @@ public sealed class ArchitectureTests
         // Arrange & Act & Assert
         var roomIdType = typeof(BOTC.Domain.Rooms.RoomId);
         var roomCodeType = typeof(BOTC.Domain.Rooms.RoomCode);
-        var roomPlayerIdType = typeof(BOTC.Domain.Rooms.RoomPlayerId);
+        var playerIdType = typeof(BOTC.Domain.Rooms.Players.PlayerId);
 
         Assert.NotNull(roomIdType);
         Assert.NotNull(roomCodeType);
-        Assert.NotNull(roomPlayerIdType);
+        Assert.NotNull(playerIdType);
     }
 
     [Fact]

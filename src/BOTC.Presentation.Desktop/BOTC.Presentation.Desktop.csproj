@@ -27,6 +27,13 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <Resource Include="Entry\Shared\Assets\host-seal.png" />
+    <Resource Include="Entry\Shared\Assets\join-seal.png" />
+    <Resource Include="Shared\Assets\entry-background.png" />
+    <Resource Include="Shared\Assets\parchment.png" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>

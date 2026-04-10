@@ -1,4 +1,4 @@
-﻿namespace BOTC.Presentation.Desktop.Configuration;
+namespace BOTC.Presentation.Desktop.Configuration;
 
 /// <summary>
 /// API client configuration options for the desktop application.

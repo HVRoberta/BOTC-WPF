@@ -1,6 +1,9 @@
-﻿using BOTC.Application.Features.Rooms.GetRoomLobby;
+using BOTC.Application.Features.Rooms.GetRoomLobby;
+using BOTC.Domain.Rooms.Players;
 using BOTC.Domain.Rooms;
+using BOTC.Domain.Users;
 using BOTC.Infrastructure.Persistence;
+using BOTC.Infrastructure.Persistence.Rooms;
 using Microsoft.EntityFrameworkCore;
 
 namespace BOTC.Infrastructure.Rooms;
@@ -19,6 +22,7 @@ public sealed class RoomLobbyQueryService : IRoomLobbyQueryService
         var entity = await dbContext.Rooms
             .AsNoTracking()
             .Include(room => room.Players)
+            .ThenInclude(player => player.User)
             .SingleOrDefaultAsync(room => room.Code == roomCode.Value, cancellationToken);
 
         if (entity is null)
@@ -33,9 +37,8 @@ public sealed class RoomLobbyQueryService : IRoomLobbyQueryService
         }
 
         var players = entity.Players
-            .OrderByDescending(player => player.Role == (int)RoomPlayerRole.Host)
+            .OrderByDescending(player => player.Role == (int)PlayerRole.Host)
             .ThenBy(player => player.JoinedAtUtc)
-            .ThenBy(player => player.DisplayName, StringComparer.Ordinal)
             .Select(MapPlayer)
             .ToArray();
 
@@ -45,18 +48,22 @@ public sealed class RoomLobbyQueryService : IRoomLobbyQueryService
             (RoomStatus)entity.Status);
     }
 
-    private static LobbyPlayerResult MapPlayer(Persistence.Rooms.RoomPlayerEntity entity)
+    private static LobbyPlayerResult MapPlayer(PlayerEntity entity)
     {
-        if (!Enum.IsDefined(typeof(RoomPlayerRole), entity.Role))
+        if (!Enum.IsDefined(typeof(PlayerRole), entity.Role))
         {
             throw new InvalidOperationException(
                 $"Room player '{entity.Id}' contains invalid persisted role value '{entity.Role}'.");
         }
 
+        var name = entity.User?.NickName 
+                   ?? entity.User?.Username 
+                   ?? "Unknown";
+
         return new LobbyPlayerResult(
-            new RoomPlayerId(entity.Id),
-            entity.DisplayName,
-            (RoomPlayerRole)entity.Role,
+            new PlayerId(entity.Id),
+            name,
+            (PlayerRole)entity.Role,
             entity.IsReady);
     }
 }

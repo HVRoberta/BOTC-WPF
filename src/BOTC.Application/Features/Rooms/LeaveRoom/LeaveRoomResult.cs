@@ -1,10 +1,11 @@
-﻿using BOTC.Domain.Rooms;
+using BOTC.Domain.Rooms.Players;
+using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Features.Rooms.LeaveRoom;
 
 public sealed record LeaveRoomResult(
     RoomCode RoomCode,
-    RoomPlayerId PlayerId,
+    PlayerId PlayerId,
     bool RoomWasRemoved,
-    RoomPlayerId? NewHostPlayerId);
+    PlayerId? NewHostPlayerId);
 
