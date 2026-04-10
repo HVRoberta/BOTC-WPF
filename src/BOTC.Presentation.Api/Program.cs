@@ -1,4 +1,4 @@
-using BOTC.Application;
+﻿using BOTC.Application;
 using BOTC.Application.Abstractions.Realtime;
 using BOTC.Contracts.Rooms;
 using BOTC.Infrastructure;
@@ -63,10 +63,10 @@ if (!string.IsNullOrWhiteSpace(port))
     app.Urls.Add($"http://*:{port}");
 }
 
-using (var scope = app.Services.CreateScope())
+await using (var scope = app.Services.CreateAsyncScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<BotcDbContext>();
-    dbContext.Database.Migrate();
+    await dbContext.Database.MigrateAsync();
 }
 
 app.UseSwagger();
