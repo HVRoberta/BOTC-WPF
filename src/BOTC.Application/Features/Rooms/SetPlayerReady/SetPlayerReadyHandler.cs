@@ -1,5 +1,5 @@
 using BOTC.Application.Abstractions.Events;
-using BOTC.Domain.Rooms.Players;
+using BOTC.Application.Abstractions.Persistence;
 using BOTC.Domain.Rooms;
 using BOTC.Domain.Rooms.Exceptions;
 
@@ -7,15 +7,15 @@ namespace BOTC.Application.Features.Rooms.SetPlayerReady;
 
 public sealed class SetPlayerReadyHandler
 {
-    private readonly IRoomSetPlayerReadyRepository _roomSetPlayerReadyRepository;
+    private readonly IRoomRepository _roomRepository;
     private readonly IDomainEventDispatcher _domainEventDispatcher;
 
     public SetPlayerReadyHandler(
-        IRoomSetPlayerReadyRepository roomSetPlayerReadyRepository,
+        IRoomRepository roomRepository,
         IDomainEventDispatcher domainEventDispatcher)
     {
-        _roomSetPlayerReadyRepository = roomSetPlayerReadyRepository
-            ?? throw new ArgumentNullException(nameof(roomSetPlayerReadyRepository));
+        _roomRepository = roomRepository
+                          ?? throw new ArgumentNullException(nameof(roomRepository));
         _domainEventDispatcher = domainEventDispatcher
             ?? throw new ArgumentNullException(nameof(domainEventDispatcher));
     }
@@ -26,7 +26,7 @@ public sealed class SetPlayerReadyHandler
 
         var roomCode = new RoomCode(command.RoomCode);
         var playerId = ParsePlayerId(command.PlayerId);
-        var room = await _roomSetPlayerReadyRepository.GetByCodeAsync(roomCode, cancellationToken);
+        var room = await _roomRepository.GetByCodeAsync(roomCode, cancellationToken);
         if (room is null)
         {
             throw new RoomSetPlayerReadyRoomNotFoundException(roomCode);
@@ -47,7 +47,7 @@ public sealed class SetPlayerReadyHandler
 
         try
         {
-            var saved = await _roomSetPlayerReadyRepository.TrySaveAsync(room, cancellationToken);
+            var saved = await _roomRepository.TrySaveAsync(room, cancellationToken);
             if (!saved)
             {
                 throw new RoomSetPlayerReadyConflictException("Unable to update player readiness due to a conflicting room state.");

@@ -1,4 +1,4 @@
-namespace BOTC.Domain.Rooms.Players;
+namespace BOTC.Domain.Rooms;
 
 public sealed class PlayerId : IEquatable<PlayerId>
 {

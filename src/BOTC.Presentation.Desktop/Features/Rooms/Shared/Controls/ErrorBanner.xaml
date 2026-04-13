@@ -1,0 +1,39 @@
+﻿<UserControl x:Class="BOTC.Presentation.Desktop.Features.Rooms.Shared.Controls.ErrorBanner"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shared="clr-namespace:BOTC.Presentation.Desktop.Features.Rooms.Shared"
+             x:Name="Root">
+    <Border Padding="12,10"
+            CornerRadius="10"
+            Visibility="{Binding Show, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource BrushInfoBackground}" />
+                <Setter Property="BorderBrush" Value="{StaticResource BrushInfoForeground}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static shared:ScreenMessageKind.Error}">
+                        <Setter Property="Background" Value="{StaticResource BrushErrorBackground}" />
+                        <Setter Property="BorderBrush" Value="{StaticResource BrushErrorForeground}" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+
+        <TextBlock Text="{Binding Message, ElementName=Root}"
+                   TextWrapping="Wrap">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Setter Property="Foreground" Value="{StaticResource BrushInfoForeground}" />
+                    <Setter Property="TextWrapping" Value="Wrap" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Kind, ElementName=Root}" Value="{x:Static shared:ScreenMessageKind.Error}">
+                            <Setter Property="Foreground" Value="{StaticResource BrushErrorForeground}" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+    </Border>
+</UserControl>
+

@@ -1,0 +1,24 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:entry="clr-namespace:BOTC.Presentation.Desktop.Features.Entry"
+                    xmlns:createRoom="clr-namespace:BOTC.Presentation.Desktop.Features.Rooms.CreateRoom"
+                    xmlns:joinRoom="clr-namespace:BOTC.Presentation.Desktop.Features.Rooms.JoinRoom"
+                    xmlns:roomLobby="clr-namespace:BOTC.Presentation.Desktop.Features.Rooms.RoomLobby"
+                    xmlns:entry1="clr-namespace:BOTC.Presentation.Desktop.Features.Entry">
+    <DataTemplate DataType="{x:Type entry1:EntryViewModel}">
+        <entry:EntryView />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type createRoom:CreateRoomViewModel}">
+        <createRoom:CreateRoomView />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type joinRoom:JoinRoomViewModel}">
+        <joinRoom:JoinRoomView />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type roomLobby:RoomLobbyViewModel}">
+        <roomLobby:RoomLobbyView />
+    </DataTemplate>
+</ResourceDictionary>
+

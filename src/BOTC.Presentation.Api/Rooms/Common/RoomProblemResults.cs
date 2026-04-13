@@ -1,6 +1,6 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 
-namespace BOTC.Presentation.Api.Rooms;
+namespace BOTC.Presentation.Api.Rooms.Common;
 
 internal static class RoomProblemResults
 {

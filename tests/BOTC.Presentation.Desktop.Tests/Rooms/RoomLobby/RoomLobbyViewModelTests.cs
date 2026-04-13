@@ -1,9 +1,9 @@
 using System.Net;
 using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Desktop.Navigation;
-using BOTC.Presentation.Desktop.Rooms;
-using BOTC.Presentation.Desktop.Rooms.RoomLobby;
-using BOTC.Presentation.Desktop.Rooms.Shared;
+using BOTC.Presentation.Desktop.Features.Rooms;
+using BOTC.Presentation.Desktop.Features.Rooms.RoomLobby;
+using BOTC.Presentation.Desktop.Features.Rooms.Shared;
 using BOTC.Presentation.Desktop.Session;
 
 namespace BOTC.Presentation.Desktop.Tests.Rooms.RoomLobby;

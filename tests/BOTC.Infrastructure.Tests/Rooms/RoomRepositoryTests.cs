@@ -1,11 +1,9 @@
-using BOTC.Application.Features.Rooms.JoinRoom;
-using BOTC.Application.Features.Rooms.LeaveRoom;
+using BOTC.Application.Abstractions.Persistence;
 using BOTC.Domain.Rooms;
-using BOTC.Domain.Rooms.Players;
 using BOTC.Domain.Users;
 using BOTC.Infrastructure.Persistence;
-using BOTC.Infrastructure.Persistence.User;
-using BOTC.Infrastructure.Rooms;
+using BOTC.Infrastructure.Persistence.Entities;
+using BOTC.Infrastructure.Persistence.Repositories;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,6 +29,23 @@ public sealed class RoomRepositoryTests : IDisposable
 
         repository = new RoomRepository(dbContext);
     }
+
+    // -------------------------------------------------------------------------
+    // Constructor guard clauses
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void Constructor_WhenDbContextIsNull_ThrowsArgumentNullException()
+    {
+        Action act = () => _ = new RoomRepository(null!);
+
+        var exception = Assert.Throws<ArgumentNullException>(act);
+        Assert.Equal("dbContext", exception.ParamName);
+    }
+
+    // -------------------------------------------------------------------------
+    // TryAddAsync
+    // -------------------------------------------------------------------------
 
     [Fact]
     public async Task TryAddAsync_WhenRoomCodeIsUnique_ReturnsTrueAndPersistsRoomWithHostPlayer()
@@ -61,8 +76,12 @@ public sealed class RoomRepositoryTests : IDisposable
         Assert.False(result);
     }
 
+    // -------------------------------------------------------------------------
+    // GetByCodeAsync
+    // -------------------------------------------------------------------------
+
     [Fact]
-    public async Task GetByCodeAsync_WhenRoomExists_ReturnsRoomWithPlayers()
+    public async Task GetByCodeAsync_WhenRoomExists_ReturnsRoomWithAllPlayers()
     {
         var (room, _) = await SetupRoomAsync("AB12CD");
         var aliceUserId = await SeedUserAsync();
@@ -79,6 +98,29 @@ public sealed class RoomRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task GetByCodeAsync_WhenRoomDoesNotExist_ReturnsNull()
+    {
+        var result = await repository.GetByCodeAsync(new RoomCode("ZZ9999"), CancellationToken.None);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetByCodeAsync_WhenRoomReturned_DoesNotLeaveTrackedEntities()
+    {
+        var (room, _) = await SetupRoomAsync("AB12CD");
+        await repository.TryAddAsync(room, CancellationToken.None);
+
+        _ = await repository.GetByCodeAsync(new RoomCode("AB12CD"), CancellationToken.None);
+
+        Assert.Empty(dbContext.ChangeTracker.Entries());
+    }
+
+    // -------------------------------------------------------------------------
+    // TrySaveAsync
+    // -------------------------------------------------------------------------
+
+    [Fact]
     public async Task TrySaveAsync_WhenRoomExists_PersistsNewlyJoinedPlayer()
     {
         var (room, _) = await SetupRoomAsync("AB12CD");
@@ -89,10 +131,10 @@ public sealed class RoomRepositoryTests : IDisposable
         var aliceUserId = await SeedUserAsync();
         loaded!.JoinPlayer(aliceUserId, DateTime.UtcNow.AddSeconds(1));
 
-        var saved = await ((IRoomJoinRepository)repository).TrySaveAsync(loaded, CancellationToken.None);
+        var saved = await repository.TrySaveAsync(loaded, CancellationToken.None);
 
         Assert.True(saved);
-        var persistedPlayers = await dbContext.RoomPlayers
+        var persistedPlayers = await dbContext.Players
             .Where(player => player.RoomId == loaded.Id.Value)
             .ToListAsync();
         Assert.Equal(2, persistedPlayers.Count);
@@ -100,8 +142,50 @@ public sealed class RoomRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task TrySaveAsync_WhenSameUserJoinsTwice_ReturnsFalse()
+    public async Task TrySaveAsync_WhenPlayerReadinessChanges_PersistsUpdatedReadinessState()
     {
+        var (room, _) = await SetupRoomAsync("AB12CD");
+        var aliceUserId = await SeedUserAsync();
+        var alice = room.JoinPlayer(aliceUserId, DateTime.UtcNow.AddSeconds(1));
+        await repository.TryAddAsync(room, CancellationToken.None);
+
+        var loaded = await repository.GetByCodeAsync(new RoomCode("AB12CD"), CancellationToken.None);
+        Assert.NotNull(loaded);
+        loaded!.SetPlayerReady(alice.Id, true);
+
+        var saved = await repository.TrySaveAsync(loaded, CancellationToken.None);
+
+        Assert.True(saved);
+        var persistedPlayer = await dbContext.Players
+            .SingleAsync(player => player.Id == alice.Id.Value);
+        Assert.True(persistedPlayer.IsReady);
+    }
+
+    [Fact]
+    public async Task TrySaveAsync_WhenGameStarts_PersistsInProgressStatus()
+    {
+        var (room, _) = await SetupRoomAsync("AB12CD");
+        var aliceUserId = await SeedUserAsync();
+        var alice = room.JoinPlayer(aliceUserId, DateTime.UtcNow.AddSeconds(1));
+        await repository.TryAddAsync(room, CancellationToken.None);
+
+        var loaded = await repository.GetByCodeAsync(new RoomCode("AB12CD"), CancellationToken.None);
+        Assert.NotNull(loaded);
+        loaded!.SetPlayerReady(alice.Id, true);
+        loaded.StartGame(loaded.HostPlayerId);
+
+        var saved = await repository.TrySaveAsync(loaded, CancellationToken.None);
+
+        Assert.True(saved);
+        var persistedRoom = await dbContext.Rooms.SingleAsync(r => r.Id == room.Id.Value);
+        Assert.Equal((int)RoomStatus.InProgress, persistedRoom.Status);
+    }
+
+    [Fact]
+    public async Task TrySaveAsync_WhenConcurrentSnapshotsSaveTheSameRoomCode_SecondSaveSucceedsWithLatestState()
+    {
+        // Two concurrent requests load the same room. Each adds a *different* user.
+        // The second save wins and the DB reflects the second snapshot's players.
         var (room, _) = await SetupRoomAsync("AB12CD");
         await repository.TryAddAsync(room, CancellationToken.None);
 
@@ -110,30 +194,70 @@ public sealed class RoomRepositoryTests : IDisposable
         Assert.NotNull(first);
         Assert.NotNull(second);
 
-        var sharedUserId = await SeedUserAsync();
-        first!.JoinPlayer(sharedUserId, DateTime.UtcNow.AddSeconds(1));
-        var firstSave = await ((IRoomJoinRepository)repository).TrySaveAsync(first, CancellationToken.None);
+        var aliceId = await SeedUserAsync();
+        var bobId   = await SeedUserAsync();
+        first!.JoinPlayer(aliceId, DateTime.UtcNow.AddSeconds(1));
+        second!.JoinPlayer(bobId,  DateTime.UtcNow.AddSeconds(1));
+
+        var firstSave  = await repository.TrySaveAsync(first, CancellationToken.None);
+        var secondSave = await repository.TrySaveAsync(second, CancellationToken.None);
+
+        // Both saves succeed; last-write-wins via synchronizer
         Assert.True(firstSave);
+        Assert.True(secondSave);
 
-        // second snapshot doesn't know Alice is already there — simulate concurrent join with same UserId
-        second!.JoinPlayer(sharedUserId, DateTime.UtcNow.AddSeconds(2));
-        var secondSave = await ((IRoomJoinRepository)repository).TrySaveAsync(second, CancellationToken.None);
-
-        Assert.False(secondSave);
+        // The final DB state reflects the second snapshot (Alice was overwritten by Bob)
+        var finalPlayers = await dbContext.Players
+            .Where(p => p.RoomId == room.Id.Value)
+            .ToListAsync();
+        Assert.Equal(2, finalPlayers.Count); // host + bob
+        Assert.Contains(finalPlayers, p => p.UserId == bobId.Value);
+        Assert.DoesNotContain(finalPlayers, p => p.UserId == aliceId.Value);
     }
 
     [Fact]
-    public async Task TrySaveAsync_WhenRoomNoLongerExists_ThrowsRoomJoinSaveRoomMissingException()
+    public async Task TrySaveAsync_WhenRoomNoLongerExists_ThrowsInvalidOperationException()
     {
         var (room, _) = await SetupRoomAsync("AB12CD");
 
-        var act = async () => await ((IRoomJoinRepository)repository).TrySaveAsync(room, CancellationToken.None);
+        var act = async () => await repository.TrySaveAsync(room, CancellationToken.None);
 
-        await Assert.ThrowsAsync<RoomJoinSaveRoomMissingException>(act);
+        await Assert.ThrowsAsync<InvalidOperationException>(act);
+    }
+
+    // -------------------------------------------------------------------------
+    // TryDeleteAsync
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task TryDeleteAsync_WhenRoomExists_ReturnsTrueAndRemovesRoomAndPlayers()
+    {
+        var (room, _) = await SetupRoomAsync("AB12CD");
+        await repository.TryAddAsync(room, CancellationToken.None);
+
+        var deleted = await repository.TryDeleteAsync(room.Id, CancellationToken.None);
+
+        Assert.True(deleted);
+        Assert.False(await dbContext.Rooms.AnyAsync(r => r.Id == room.Id.Value));
+        Assert.False(await dbContext.Players.AnyAsync(player => player.RoomId == room.Id.Value));
     }
 
     [Fact]
-    public async Task LeaveRoomTrySaveAsync_WhenHostLeaves_PersistsTransferredHostAndRemovesLeavingPlayer()
+    public async Task TryDeleteAsync_WhenRoomDoesNotExist_ReturnsFalse()
+    {
+        var nonExistentRoomId = RoomId.New();
+
+        var deleted = await repository.TryDeleteAsync(nonExistentRoomId, CancellationToken.None);
+
+        Assert.False(deleted);
+    }
+
+    // -------------------------------------------------------------------------
+    // TrySaveAsync — host transfer scenario
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task TrySaveAsync_WhenHostLeaves_PersistsTransferredHostAndRemovesLeavingPlayer()
     {
         var (room, _) = await SetupRoomAsync("AB12CD");
         var aliceUserId = await SeedUserAsync();
@@ -147,33 +271,21 @@ public sealed class RoomRepositoryTests : IDisposable
         var originalHostId = loaded!.HostPlayerId;
         loaded.LeavePlayer(originalHostId);
 
-        var saved = await ((IRoomLeaveRepository)repository).TrySaveAsync(loaded, CancellationToken.None);
+        var saved = await repository.TrySaveAsync(loaded, CancellationToken.None);
 
         Assert.True(saved);
-
         var persisted = await dbContext.Rooms
-            .Include(existingRoom => existingRoom.Players)
-            .SingleAsync(existingRoom => existingRoom.Code == "AB12CD");
-
+            .Include(r => r.Players)
+            .SingleAsync(r => r.Code == "AB12CD");
         Assert.DoesNotContain(persisted.Players, player => player.Id == originalHostId.Value);
         Assert.Contains(persisted.Players, player => player.Id == alice.Id.Value && player.Role == (int)PlayerRole.Host);
         Assert.Contains(persisted.Players, player => player.Id == bob.Id.Value && player.Role == (int)PlayerRole.Player);
     }
 
-    [Fact]
-    public async Task LeaveRoomTryDeleteAsync_WhenLastPlayerLeaves_RemovesRoom()
-    {
-        var (room, _) = await SetupRoomAsync("AB12CD");
-        await repository.TryAddAsync(room, CancellationToken.None);
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
 
-        var deleted = await ((IRoomLeaveRepository)repository).TryDeleteAsync(room.Id, CancellationToken.None);
-
-        Assert.True(deleted);
-        Assert.False(await dbContext.Rooms.AnyAsync(existingRoom => existingRoom.Id == room.Id.Value));
-        Assert.False(await dbContext.RoomPlayers.AnyAsync(player => player.RoomId == room.Id.Value));
-    }
-
-    /// <summary>Seeds a UserEntity and returns a Room created with that host UserId.</summary>
     private async Task<(Room Room, UserId HostUserId)> SetupRoomAsync(string code)
     {
         var hostUserId = await SeedUserAsync();
@@ -181,7 +293,6 @@ public sealed class RoomRepositoryTests : IDisposable
         return (room, hostUserId);
     }
 
-    /// <summary>Inserts a UserEntity with a unique username and returns its UserId.</summary>
     private async Task<UserId> SeedUserAsync()
     {
         var userId = UserId.New();

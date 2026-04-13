@@ -4,6 +4,8 @@ namespace BOTC.Domain.Tests.Players;
 
 public sealed class UserTests
 {
+    // ── Create ──────────────────────────────────────────────────────────────
+
     [Fact]
     public void Create_WhenValidInput_SetsAllPropertiesCorrectly()
     {
@@ -108,6 +110,20 @@ public sealed class UserTests
     }
 
     [Fact]
+    public void Create_WhenUsernameIsExactly50Characters_Succeeds()
+    {
+        // Arrange
+        var id = UserId.New();
+        var maxUsername = new string('a', 50);
+
+        // Act
+        var user = User.Create(id, maxUsername, "Ali");
+
+        // Assert
+        Assert.Equal(maxUsername, user.Username);
+    }
+
+    [Fact]
     public void Create_WhenValidInput_NormalizedUsernameIsUppercaseOfUsername()
     {
         // Arrange
@@ -133,6 +149,8 @@ public sealed class UserTests
         Assert.Equal(user.NickName.ToUpperInvariant(), user.NormalizedNickName);
     }
 
+    // ── Rehydrate ────────────────────────────────────────────────────────────
+
     [Fact]
     public void Rehydrate_WhenValidInput_SetsAllPropertiesCorrectly()
     {
@@ -140,7 +158,7 @@ public sealed class UserTests
         var id = UserId.New();
 
         // Act
-        var user = User.Rehydrate(id, "alice", "ALICE", "Ali", "ALI");
+        var user = User.Rehydrate(id, "alice", "Ali");
 
         // Assert
         Assert.Equal(id, user.Id);
@@ -151,30 +169,51 @@ public sealed class UserTests
     }
 
     [Fact]
-    public void Rehydrate_WhenNormalizedUsernameDoesNotMatchUsername_ThrowsArgumentException()
+    public void Rehydrate_WhenUsernameHasSurroundingWhitespace_TrimsIt()
     {
         // Arrange
         var id = UserId.New();
 
         // Act
-        Action act = () => User.Rehydrate(id, "alice", "WRONG", "Ali", "ALI");
+        var user = User.Rehydrate(id, "  alice  ", "Ali");
 
         // Assert
-        Assert.Throws<ArgumentException>(act);
+        Assert.Equal("alice", user.Username);
     }
 
-    [Fact]
-    public void Rehydrate_WhenNormalizedNickNameDoesNotMatchNickName_ThrowsArgumentException()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Rehydrate_WhenUsernameIsInvalid_ThrowsArgumentException(string? username)
     {
         // Arrange
         var id = UserId.New();
 
         // Act
-        Action act = () => User.Rehydrate(id, "alice", "ALICE", "Ali", "WRONG");
+        Action act = () => User.Rehydrate(id, username!, "Ali");
 
         // Assert
         Assert.Throws<ArgumentException>(act);
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Rehydrate_WhenNickNameIsInvalid_ThrowsArgumentException(string? nickName)
+    {
+        // Arrange
+        var id = UserId.New();
+
+        // Act
+        Action act = () => User.Rehydrate(id, "alice", nickName!);
+
+        // Assert
+        Assert.Throws<ArgumentException>(act);
+    }
+
+    // ── ChangeNickName ────────────────────────────────────────────────────────
 
     [Fact]
     public void ChangeNickName_WhenValidInput_ReturnsNewUserWithUpdatedNickNameAndNormalizedNickName()
@@ -211,8 +250,7 @@ public sealed class UserTests
     public void ChangeNickName_WhenNickNameHasLeadingAndTrailingWhitespace_TrimsIt()
     {
         // Arrange
-        var id = UserId.New();
-        var user = User.Create(id, "alice", "Ali");
+        var user = User.Create(UserId.New(), "alice", "Ali");
 
         // Act
         var updated = user.ChangeNickName("  Bob  ");
@@ -221,19 +259,37 @@ public sealed class UserTests
         Assert.Equal("Bob", updated.NickName);
     }
 
-    [Fact]
-    public void ChangeNickName_WhenNickNameIsEmpty_ThrowsArgumentException()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ChangeNickName_WhenNickNameIsNullOrEmptyOrWhitespace_ThrowsArgumentException(string? nickName)
     {
         // Arrange
-        var id = UserId.New();
-        var user = User.Create(id, "alice", "Ali");
+        var user = User.Create(UserId.New(), "alice", "Ali");
 
         // Act
-        Action act = () => user.ChangeNickName("");
+        Action act = () => user.ChangeNickName(nickName!);
 
         // Assert
         Assert.Throws<ArgumentException>(act);
     }
+
+    [Fact]
+    public void ChangeNickName_WhenNickNameExceeds50Characters_ThrowsArgumentException()
+    {
+        // Arrange
+        var user = User.Create(UserId.New(), "alice", "Ali");
+        var longNickName = new string('b', 51);
+
+        // Act
+        Action act = () => user.ChangeNickName(longNickName);
+
+        // Assert
+        Assert.Throws<ArgumentException>(act);
+    }
+
+    // ── ChangeUsername ────────────────────────────────────────────────────────
 
     [Fact]
     public void ChangeUsername_WhenValidInput_ReturnsNewUserWithUpdatedUsernameAndNormalizedUsername()
@@ -270,8 +326,7 @@ public sealed class UserTests
     public void ChangeUsername_WhenUsernameHasLeadingAndTrailingWhitespace_TrimsIt()
     {
         // Arrange
-        var id = UserId.New();
-        var user = User.Create(id, "alice", "Ali");
+        var user = User.Create(UserId.New(), "alice", "Ali");
 
         // Act
         var updated = user.ChangeUsername("  bob  ");
@@ -280,18 +335,33 @@ public sealed class UserTests
         Assert.Equal("bob", updated.Username);
     }
 
-    [Fact]
-    public void ChangeUsername_WhenUsernameIsEmpty_ThrowsArgumentException()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ChangeUsername_WhenUsernameIsNullOrEmptyOrWhitespace_ThrowsArgumentException(string? username)
     {
         // Arrange
-        var id = UserId.New();
-        var user = User.Create(id, "alice", "Ali");
+        var user = User.Create(UserId.New(), "alice", "Ali");
 
         // Act
-        Action act = () => user.ChangeUsername("");
+        Action act = () => user.ChangeUsername(username!);
+
+        // Assert
+        Assert.Throws<ArgumentException>(act);
+    }
+
+    [Fact]
+    public void ChangeUsername_WhenUsernameExceeds50Characters_ThrowsArgumentException()
+    {
+        // Arrange
+        var user = User.Create(UserId.New(), "alice", "Ali");
+        var longUsername = new string('b', 51);
+
+        // Act
+        Action act = () => user.ChangeUsername(longUsername);
 
         // Assert
         Assert.Throws<ArgumentException>(act);
     }
 }
-

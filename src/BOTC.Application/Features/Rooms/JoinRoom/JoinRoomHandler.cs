@@ -1,5 +1,5 @@
 using BOTC.Application.Abstractions.Events;
-using BOTC.Domain.Rooms.Players;
+using BOTC.Application.Abstractions.Persistence;
 using BOTC.Domain.Rooms;
 using BOTC.Domain.Rooms.Exceptions;
 
@@ -7,14 +7,14 @@ namespace BOTC.Application.Features.Rooms.JoinRoom;
 
 public sealed class JoinRoomHandler
 {
-    private readonly IRoomJoinRepository _roomJoinRepository;
+    private readonly IRoomRepository _roomRepository;
     private readonly IDomainEventDispatcher _domainEventDispatcher;
 
     public JoinRoomHandler(
-        IRoomJoinRepository roomJoinRepository,
+        IRoomRepository roomRepository,
         IDomainEventDispatcher domainEventDispatcher)
     {
-        _roomJoinRepository = roomJoinRepository ?? throw new ArgumentNullException(nameof(roomJoinRepository));
+        _roomRepository = roomRepository ?? throw new ArgumentNullException(nameof(roomRepository));
         _domainEventDispatcher = domainEventDispatcher ?? throw new ArgumentNullException(nameof(domainEventDispatcher));
     }
 
@@ -23,7 +23,7 @@ public sealed class JoinRoomHandler
         ArgumentNullException.ThrowIfNull(command);
 
         var roomCode = new RoomCode(command.RoomCode);
-        var room = await _roomJoinRepository.GetByCodeAsync(roomCode, cancellationToken);
+        var room = await _roomRepository.GetByCodeAsync(roomCode, cancellationToken);
         if (room is null)
         {
             throw new RoomJoinNotFoundException(roomCode);
@@ -41,7 +41,7 @@ public sealed class JoinRoomHandler
 
         try
         {
-            var saved = await _roomJoinRepository.TrySaveAsync(room, cancellationToken);
+            var saved = await _roomRepository.TrySaveAsync(room, cancellationToken);
             if (!saved)
             {
                 throw new RoomJoinConflictException("Unable to join room due to a conflicting room state.");

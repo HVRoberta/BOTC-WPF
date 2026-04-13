@@ -1,4 +1,4 @@
-namespace BOTC.Domain.Rooms.Players;
+namespace BOTC.Domain.Rooms;
 
 public enum PlayerRole
 {

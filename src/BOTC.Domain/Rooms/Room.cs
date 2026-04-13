@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using BOTC.Domain.Rooms.Players;
 using BOTC.Domain.Rooms.Events;
 using BOTC.Domain.Rooms.Exceptions;
 using BOTC.Domain.Rooms.Outcomes;

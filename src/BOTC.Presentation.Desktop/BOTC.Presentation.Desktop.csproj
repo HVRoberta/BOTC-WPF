@@ -28,10 +28,30 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Entry\Shared\Assets\host-seal.png" />
-    <Resource Include="Entry\Shared\Assets\join-seal.png" />
+    <Resource Include="Features\Entry\Shared\Assets\host-seal.png" />
+    <Resource Include="Features\Entry\Shared\Assets\join-seal.png" />
     <Resource Include="Shared\Assets\entry-background.png" />
     <Resource Include="Shared\Assets\parchment.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ApplicationDefinition Include="App\App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <XamlRuntime>Wpf</XamlRuntime>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Update="App\MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <XamlRuntime>Wpf</XamlRuntime>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Infrastructure\" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -1,4 +1,4 @@
-using BOTC.Presentation.Desktop.Entry;
+using BOTC.Presentation.Desktop.Features.Entry;
 using BOTC.Presentation.Desktop.Navigation;
 using BOTC.Presentation.Desktop.Session;
 

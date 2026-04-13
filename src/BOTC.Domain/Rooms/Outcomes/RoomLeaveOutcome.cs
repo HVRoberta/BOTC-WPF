@@ -1,5 +1,3 @@
-using BOTC.Domain.Rooms.Players;
-
 namespace BOTC.Domain.Rooms.Outcomes;
 
 public sealed record RoomLeaveOutcome(

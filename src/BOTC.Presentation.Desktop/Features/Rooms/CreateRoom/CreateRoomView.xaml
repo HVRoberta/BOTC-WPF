@@ -1,0 +1,63 @@
+﻿<UserControl x:Class="BOTC.Presentation.Desktop.Features.Rooms.CreateRoom.CreateRoomView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:sharedControls="clr-namespace:BOTC.Presentation.Desktop.Features.Rooms.Shared.Controls"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="400"
+             d:DesignWidth="520">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="16" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <sharedControls:PageHeader Title="Create room"
+                                   Subtitle="Enter your name to create a new room and become its host." />
+
+        <sharedControls:SectionCard Grid.Row="2"
+                                    Title="Host details"
+                                    Subtitle="Your name will be shown to all players in the lobby.">
+            <sharedControls:SectionCard.BodyContent>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource FieldLabelTextStyle}"
+                               Text="Host name" />
+                    <TextBox Style="{StaticResource InputTextBoxStyle}"
+                             MaxLength="40"
+                             Text="{Binding HostName, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter"
+                                        Command="{Binding CreateRoomCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+
+                    <sharedControls:ActionBar Margin="0,24,0,0">
+                        <sharedControls:ActionBar.LeadingContent>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Margin="0,0,12,0"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        Command="{Binding CreateRoomCommand}"
+                                        Content="Create room" />
+                                <Button Style="{StaticResource SecondaryButtonStyle}"
+                                        Command="{Binding NavigateToJoinRoomCommand}"
+                                        Content="Join a room instead" />
+                            </StackPanel>
+                        </sharedControls:ActionBar.LeadingContent>
+                    </sharedControls:ActionBar>
+
+                    <sharedControls:ErrorBanner Margin="0,24,0,0"
+                                                Message="{Binding ScreenMessage}"
+                                                Kind="{Binding ScreenMessageKind}"
+                                                Show="{Binding HasScreenMessage}" />
+
+                    <sharedControls:LoadingPanel Margin="0,12,0,0"
+                                                 Text="{Binding BusyText}"
+                                                 IsBusy="{Binding IsBusy}" />
+                </StackPanel>
+            </sharedControls:SectionCard.BodyContent>
+        </sharedControls:SectionCard>
+    </Grid>
+</UserControl>
+

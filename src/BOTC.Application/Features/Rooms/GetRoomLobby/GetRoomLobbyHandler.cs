@@ -1,3 +1,4 @@
+﻿using BOTC.Application.Abstractions.Persistence;
 using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Features.Rooms.GetRoomLobby;
@@ -9,7 +10,7 @@ public sealed class GetRoomLobbyHandler
     public GetRoomLobbyHandler(IRoomLobbyQueryService roomLobbyQueryService)
     {
         _roomLobbyQueryService = roomLobbyQueryService
-            ?? throw new ArgumentNullException(nameof(roomLobbyQueryService));
+                                 ?? throw new ArgumentNullException(nameof(roomLobbyQueryService));
     }
 
     public async Task<GetRoomLobbyResult> HandleAsync(GetRoomLobbyQuery query, CancellationToken cancellationToken)

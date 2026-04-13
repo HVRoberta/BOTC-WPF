@@ -1,6 +1,6 @@
 using BOTC.Domain.Users;
 
-namespace BOTC.Domain.Rooms.Players;
+namespace BOTC.Domain.Rooms;
 
 public sealed class Player
 {

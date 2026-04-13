@@ -1,5 +1,5 @@
 using BOTC.Application.Abstractions.Events;
-using BOTC.Domain.Rooms.Players;
+using BOTC.Application.Abstractions.Persistence;
 using BOTC.Domain.Rooms;
 using BOTC.Domain.Rooms.Outcomes;
 
@@ -7,14 +7,14 @@ namespace BOTC.Application.Features.Rooms.LeaveRoom;
 
 public sealed class LeaveRoomHandler
 {
-    private readonly IRoomLeaveRepository _roomLeaveRepository;
+    private readonly IRoomRepository _roomRepository;
     private readonly IDomainEventDispatcher _domainEventDispatcher;
 
     public LeaveRoomHandler(
-        IRoomLeaveRepository roomLeaveRepository,
+        IRoomRepository roomRepository,
         IDomainEventDispatcher domainEventDispatcher)
     {
-        _roomLeaveRepository = roomLeaveRepository ?? throw new ArgumentNullException(nameof(roomLeaveRepository));
+        _roomRepository = roomRepository ?? throw new ArgumentNullException(nameof(roomRepository));
         _domainEventDispatcher = domainEventDispatcher ?? throw new ArgumentNullException(nameof(domainEventDispatcher));
     }
 
@@ -24,7 +24,7 @@ public sealed class LeaveRoomHandler
 
         var roomCode = new RoomCode(command.RoomCode);
         var playerId = ParsePlayerId(command.PlayerId);
-        var room = await _roomLeaveRepository.GetByCodeAsync(roomCode, cancellationToken);
+        var room = await _roomRepository.GetByCodeAsync(roomCode, cancellationToken);
         if (room is null)
         {
             throw new RoomLeaveRoomNotFoundException(roomCode);
@@ -42,7 +42,7 @@ public sealed class LeaveRoomHandler
 
         if (outcome.RoomWasRemoved)
         {
-            var deleted = await _roomLeaveRepository.TryDeleteAsync(room.Id, cancellationToken);
+            var deleted = await _roomRepository.TryDeleteAsync(room.Id, cancellationToken);
             if (!deleted)
             {
                 throw new RoomLeaveRoomNotFoundException(roomCode);
@@ -52,7 +52,7 @@ public sealed class LeaveRoomHandler
         {
             try
             {
-                var saved = await _roomLeaveRepository.TrySaveAsync(room, cancellationToken);
+                var saved = await _roomRepository.TrySaveAsync(room, cancellationToken);
                 if (!saved)
                 {
                     throw new RoomLeaveConflictException("Unable to leave room due to a conflicting room state.");

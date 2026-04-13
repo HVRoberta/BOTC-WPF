@@ -1,5 +1,4 @@
 using BOTC.Domain.Events;
-using BOTC.Domain.Rooms.Players;
 
 namespace BOTC.Domain.Rooms.Events;
 

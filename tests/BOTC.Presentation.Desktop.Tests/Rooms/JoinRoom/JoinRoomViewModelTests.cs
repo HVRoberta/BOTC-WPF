@@ -1,8 +1,8 @@
 using BOTC.Contracts.Rooms;
 using BOTC.Presentation.Desktop.Navigation;
-using BOTC.Presentation.Desktop.Rooms;
-using BOTC.Presentation.Desktop.Rooms.JoinRoom;
-using BOTC.Presentation.Desktop.Rooms.Shared;
+using BOTC.Presentation.Desktop.Features.Rooms;
+using BOTC.Presentation.Desktop.Features.Rooms.JoinRoom;
+using BOTC.Presentation.Desktop.Features.Rooms.Shared;
 using BOTC.Presentation.Desktop.Session;
 
 namespace BOTC.Presentation.Desktop.Tests.Rooms.JoinRoom;

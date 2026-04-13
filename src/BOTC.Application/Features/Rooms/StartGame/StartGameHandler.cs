@@ -1,20 +1,20 @@
 using BOTC.Application.Abstractions.Events;
-using BOTC.Domain.Rooms.Players;
+using BOTC.Application.Abstractions.Persistence;
 using BOTC.Domain.Rooms;
 
 namespace BOTC.Application.Features.Rooms.StartGame;
 
 public sealed class StartGameHandler
 {
-    private readonly IRoomStartGameRepository _roomStartGameRepository;
+    private readonly IRoomRepository _roomRepository;
     private readonly IDomainEventDispatcher _domainEventDispatcher;
 
     public StartGameHandler(
-        IRoomStartGameRepository roomStartGameRepository,
+        IRoomRepository roomRepository,
         IDomainEventDispatcher domainEventDispatcher)
     {
-        _roomStartGameRepository = roomStartGameRepository
-            ?? throw new ArgumentNullException(nameof(roomStartGameRepository));
+        _roomRepository = roomRepository
+                          ?? throw new ArgumentNullException(nameof(roomRepository));
         _domainEventDispatcher = domainEventDispatcher
             ?? throw new ArgumentNullException(nameof(domainEventDispatcher));
     }
@@ -25,7 +25,7 @@ public sealed class StartGameHandler
 
         var roomCode = new RoomCode(command.RoomCode);
         var starterPlayerId = ParsePlayerId(command.StarterPlayerId);
-        var room = await _roomStartGameRepository.GetByCodeAsync(roomCode, cancellationToken);
+        var room = await _roomRepository.GetByCodeAsync(roomCode, cancellationToken);
         if (room is null)
         {
             throw new RoomStartGameRoomNotFoundException(roomCode);
@@ -39,7 +39,7 @@ public sealed class StartGameHandler
 
         try
         {
-            var saved = await _roomStartGameRepository.TrySaveAsync(room, cancellationToken);
+            var saved = await _roomRepository.TrySaveAsync(room, cancellationToken);
             if (!saved)
             {
                 throw new RoomStartGameConflictException("Unable to start game due to a conflicting room state.");

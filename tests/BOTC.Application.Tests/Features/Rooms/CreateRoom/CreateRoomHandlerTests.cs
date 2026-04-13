@@ -230,6 +230,15 @@ public sealed class CreateRoomHandlerTests
             return Task.FromResult(existingCodes.Add(room.Code));
         }
 
+        public Task<Room?> GetByCodeAsync(RoomCode roomCode, CancellationToken cancellationToken)
+            => throw new NotSupportedException("Not used by CreateRoomHandler.");
+
+        public Task<bool> TrySaveAsync(Room room, CancellationToken cancellationToken)
+            => throw new NotSupportedException("Not used by CreateRoomHandler.");
+
+        public Task<bool> TryDeleteAsync(RoomId roomId, CancellationToken cancellationToken)
+            => throw new NotSupportedException("Not used by CreateRoomHandler.");
+
         public void SeedExistingCode(string code)
         {
             existingCodes.Add(new RoomCode(code));
